@@ -33,7 +33,9 @@ function ret = rac(obj, acc, vel, Kv, Kw, pos, Kp, Ko, qddr, qdr)
     Sa = skew(obj.acc);                                                     % Skew-symmetric matrix of angular acceleration
     Sw = skew(obj.vel);                                                     % Skew-symmetric matrix of angular velocity
     J = obj.arm.getJacobian();                                              % Manipulator Jacobian at current state
-    xddot = acc - obj.acc - [(Sa + Sw^2)*r + 2*Sw*J(1:3,:)*obj.arm.qdot; zeros(3,1)];
+    Jdot = obj.arm.getJdot();
+    xddot = acc - obj.acc - [(Sa + Sw^2)*r; zeros(3,1)] ...
+            - [Jdot(1:3,:) + 2*Sw*J(1:3,:); Jdot(4:6,:)]*obj.arm.qdot;
 
     if nargin < 9
         qddr = zeros(obj.arm.n,1);                                       	% No redundant accelerations

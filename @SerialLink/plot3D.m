@@ -30,14 +30,18 @@
 
 function plot3D(obj,q,varargin)
 
-    if isempty(obj.link(1).faces)
-        error('No 3D information specified for this robot.');
-    end
-    if nargin == 1                                                          % No inputs
-        q = obj.q;                                                          % Use current state
+    for i = 1:obj.n
+        if isempty(obj.link(i).faces)
+            error("Insufficient data to create a 3D model of this robot.");
+            break
+        end
     end
     
-    [~,FK] = obj.fk(q,obj.base);                                            % Compute the forward kinematics
+    if nargin == 1
+        q = obj.q;                      % Plot using the current joint state
+    end
+    
+    [~,FK] = obj.fk(q,obj.base);        % Get forward kinematics chain
     
     % Default options
     axes = false;
@@ -45,7 +49,7 @@ function plot3D(obj,q,varargin)
     perspective = [-30 30];
     toolFrame = true;
     
-    % Process options
+    % Process optional inputs
     for i = 1:length(varargin)
         if ischar(varargin{i})
             option = varargin{i};
@@ -63,46 +67,132 @@ function plot3D(obj,q,varargin)
             end
         end
     end
-       
-    % Check to see if a figure exists, and delete any transform objects.                                                                  
-    fig = gca;                                                              % Assign graphics handle
-    if isempty(fig.Children)                                                % Nothing plotted yet
+    
+    % Check to see if a robot model already exists, and update transforms
+    % accordingly
+    modelExists = false;
+    fig = gca;
+    if isempty(fig.Children)
         light('Position',[-10,0,100]);                                      % Create a light source
     else
-        % Run through and delete the hggroup containing the robot model
         for i = 1:length(fig.Children)
-            if strcmp(fig.Children(i).Type,'hggroup') && strcmp(fig.Children(i).Tag, 'lol')
-                delete(fig.Children(i))                                 
-                break                                                       
+            if strcmp(fig.Children(i).Type, 'hggroup') && strcmp(fig.Children(i).Tag,obj.name)
+                modelExists = true;
+                m = length(fig.Children(i).Children);                   % m = obj.n + 1
+                fig.Children(i).Children(m).Matrix = obj.base.matrix;   % Update base location
+                for j = 1:m-1
+                    index = m-j;                                         % Order of hgtransforms is backwards
+                    fig.Children(i).Children(index).Matrix = FK(j).matrix;	% Update jth link
+                end
+                break
             end
         end
     end
-    
-    hg = hggroup('Tag','lol');                                              % Create a new hg group
-    
-    % Plot the base
-    blah = patch(   'Faces', obj.basefaces,             ...
-                    'Vertices', obj.basevertices,       ...
-                    'FaceVertexCData', obj.basecolors,  ...
-                    'FaceColor', 'flat',                ...
-                    'EdgeColor', 'none');
-    stuff = hgtransform('Tag','lol','Matrix',obj.base.matrix,'Parent',hg);	% Create a transform for the base
-    set(blah,'Parent',stuff);                                               % Set the transform
-    
-    % Plot the links
-    h = nan(obj.n,1);                                                      	
-    TF = nan(obj.n,1);                                                      
-    for i = 1:obj.n
-       h(i) =  patch(   'Faces',obj.link(i).faces,                  ...
-                        'Vertices',obj.link(i).vertices,            ...
-                        'FaceVertexCData',obj.link(i).colors,    	...
-                        'FaceColor','flat',                     	...
-                        'EdgeColor','none');
-                    
-        TF(i) = hgtransform('Tag','lol','Matrix',FK(i).matrix,'Parent',hg); % Create a transform for the link
-        set(h(i),'Parent',TF(i));                                       	
+
+    % Model doesn't yet exist, so create patch objects and hgtransforms for
+    % base and each link
+    if ~modelExists
+        hg = hggroup('Tag',obj.name);
+
+        % Plot the base
+        base_patch = patch('Faces', obj.basefaces,    	...
+                     'Vertices', obj.basevertices,    	...
+                     'FaceVertexCData', obj.basecolors,	...
+                     'FaceColor', 'flat',              	...
+                     'EdgeColor', 'none');
+        base_tf = hgtransform('Tag',obj.name+"_base",'Matrix',obj.base.matrix,'Parent',hg);	% Create a transform for the base
+        set(base_patch,'Parent',base_tf);                                               % Set the transform
+        
+        % Plot the links
+        link_patch = nan(obj.n,1);                                                      	
+        link_tf = nan(obj.n,1);                                                      
+        for i = 1:obj.n
+           link_patch(i) =  patch('Faces',obj.link(i).faces,          	...
+                                  'Vertices',obj.link(i).vertices,      ...
+                                  'FaceVertexCData',obj.link(i).colors, ...
+                                  'FaceColor','flat',                   ...
+                                  'EdgeColor','none');
+
+            link_tf(i) = hgtransform('Tag',obj.name+"_link"+num2str(i),'Matrix',FK(i).matrix,'Parent',hg); % Create a transform for the link
+            set(link_patch(i),'Parent',link_tf(i));                                       	
+        end
     end
-    
+
+%%
+%     if isempty(obj.link(1).faces)
+%         error('No 3D information specified for this robot.');
+%     end
+%     if nargin == 1                                                          % No inputs
+%         q = obj.q;                                                          % Use current state
+%     end
+%     
+%     [~,FK] = obj.fk(q,obj.base);                                            % Compute the forward kinematics
+%     
+%     % Default options
+%     axes = false;
+% 	workspace = [-0.3 0.7 -0.5 0.5 -0.2 0.8];                                      
+%     perspective = [-30 30];
+%     toolFrame = true;
+%     
+%     % Process options
+%     for i = 1:length(varargin)
+%         if ischar(varargin{i})
+%             option = varargin{i};
+%             switch option
+%                 case 'axes'
+%                     axes = true;
+%                 case 'workspace'
+%                     workspace = varargin{i+1};
+%                 case 'view'
+%                     perspective = varargin{i+1};
+%                 case 'noToolFrame'
+%                     toolFrame = false;
+%                 otherwise
+%                     error("Option(s) for SerialLink.plot3D() incorrectly specified.");
+%             end
+%         end
+%     end
+%        
+%     % Check to see if a figure exists, and delete any transform objects.                                                                  
+%     fig = gca;                                                              % Assign graphics handle
+%     if isempty(fig.Children)                                                % Nothing plotted yet
+%         light('Position',[-10,0,100]);                                      % Create a light source
+%     else
+%         % Run through and delete the hggroup containing the robot model
+%         for i = 1:length(fig.Children)
+%             if strcmp(fig.Children(i).Type,'hggroup') && strcmp(fig.Children(i).Tag, 'lol')
+%                 delete(fig.Children(i))                                 
+%                 break                                                       
+%             end
+%         end
+%     end
+%     
+%     hg = hggroup('Tag','lol');                                              % Create a new hg group
+%     
+%     % Plot the base
+%     blah = patch(   'Faces', obj.basefaces,             ...
+%                     'Vertices', obj.basevertices,       ...
+%                     'FaceVertexCData', obj.basecolors,  ...
+%                     'FaceColor', 'flat',                ...
+%                     'EdgeColor', 'none');
+%     stuff = hgtransform('Tag','lol','Matrix',obj.base.matrix,'Parent',hg);	% Create a transform for the base
+%     set(blah,'Parent',stuff);                                               % Set the transform
+%     
+%     % Plot the links
+%     h = nan(obj.n,1);                                                      	
+%     TF = nan(obj.n,1);                                                      
+%     for i = 1:obj.n
+%        h(i) =  patch(   'Faces',obj.link(i).faces,                  ...
+%                         'Vertices',obj.link(i).vertices,            ...
+%                         'FaceVertexCData',obj.link(i).colors,    	...
+%                         'FaceColor','flat',                     	...
+%                         'EdgeColor','none');
+%                     
+%         TF(i) = hgtransform('Tag','lol','Matrix',FK(i).matrix,'Parent',hg); % Create a transform for the link
+%         set(h(i),'Parent',TF(i));                                       	
+%     end
+%%
+
     % Plot axes for each link
     if axes == true
         hold on

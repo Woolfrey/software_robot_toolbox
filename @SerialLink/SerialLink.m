@@ -44,6 +44,7 @@ classdef SerialLink < handle
         link;                                                               % Array of Link objects
         M;                                                                  % Inertia matrix
         n;                                                                  % No. of joints
+        name;                                                               % Unique identifier
         q;                                                                  % Joint positions
         qdot;                                                               % Joint velocities
         tool;                                                               % Tool or end-effector pose
