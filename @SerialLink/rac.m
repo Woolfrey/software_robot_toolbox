@@ -1,9 +1,19 @@
 %% SerialLink.rac()
 % Jonathan Woolfrey
 %
-% Resolved acceleration control.
-
-
+% Resolved acceleration control. This function computes the joint
+% accelerations needed to move the end-effector at a desired acceleration.
+%
+% Inputs:
+% - acc             Desired end-effector acceleration (6x1)
+% - vel             Desired end-effector velocity (6x1)
+% - Kd              Gain on the velocity error (1x1)
+% - pos             Desired end-effector position (Pose object)
+% - Kp              Gain on the end-effector position (1x1)
+% - redundant       Joint accelerations relating to a redundant task (nx1)
+%
+% Output:
+% - Joint accelerations (nx1)
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -25,52 +35,34 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = rac(obj, acc, vel, Kv, Kw, pos, Kp, Ko, qddr, qdr)
+function ret = rac(obj, acc, vel, Kd, pos, Kp, redundant)
 
-    lambdaMax = 0.1;                                                        % Maximum damping in DLS
-    epsilon = 1E-2;                                                         % Threshold value for activating DLS
-
-    if nargin < 9                                                           % No redundant accelerations
-        qddr = zeros(obj.n,1);                                              
-    end
-    if nargin < 6                                                           % No desired position given
-        e = zeros(6,1);                                                     % Pose error is arbtirary
-        Kp = 0;                                                             % No proportional gain
-    else
-        e = obj.tool.error(pos);                    
-        J = obj.getJacobian();                                              % Jacobian at current state
-    end
-    if nargin < 3                                                           % End-effector velocity is arbitrary
-        edot = zeros(6,1);
-        Kv = 0;                                                             % No derivative gain
-    else
-        edot = vel - J*obj.qdot;                                            % Velocity tracking error
-    end
-
-    xddot = acc + [Kp*e(1:3); Ko*e(4:6)] + [Kv*edot(1:3); Kw*edot(4:6)];  	% Required end-effector acceleration
+	J = obj.getJacobian();
+    Jdot = obj.getJdot();
     
-    Jdot = obj.getJdot();                                                   % Get time-derivative at current state
-    
-    if obj.n > 6                                                            % Redundant manipulator
-        W = obj.M + obj.getJointWeight(obj.q,obj.qdot);                     % Inertia + joint limit weighting
-    else
-        W = eye(obj.n);                                                     % No weighting
+    if nargin == 2
+        xddot = acc;                                % Only acceleration defined
+    elseif nargin == 3
+        edot = vel - J*obj.qdot;                    % Velocity tracking error
+        xddot = acc + Kd*edot;                      % Proportional feedback
+    elseif nargin > 3
+        e = obj.tool.error(pos);                    % Position tracking error
+        edot = vel - J*obj.qdot;                    % Velocity tracking error
+        xddot = acc + Kp*e + Kd*edot;
     end
-    invJ = obj.dls(J,epsilon,lambdaMax,W);                                  % Compute inverse Jacobian
-    
-    qddot = invJ*(xddot - Jdot*obj.qdot);                                   % Compute joint accelerations
-    
-    if nargin > 8                                                           % Null space tasks given
-        N = eye(obj.n) - invJ*J;                                            % Null space projection matrix
-        switch nargin
-            case 9
-                qddot = qddot + N*qddr;                                     % Just null space acceleration
-            case 10
-                qddot = qddot + N*(qddr + Jdot'*invJ'*(obj.qdot - qdr));    % Null space acceleration and velocity
+        if obj.n > 6                                % Kinematically redundant
+        W = obj.M;                              
+        invJ = obj.dls(J,W,"verbose");              % Use inertia weighting
+        if nargin < 5                               
+            qddot = invJ*(xddot - Jdot*obj.qdot);   % No null space control
+        else
+            N = eye(obj.n) - invJ*J;                % Null space projection matrix
+            qddot = invJ*(xddot - Jdot*obj.qdot) + N*redundant; % Null space accelerations defined
         end
+    else
+        invJ = obj.dls(J,eye(obj.n),"verbose");
+        qddot = invJ*(xddot - Jdot*obj.qdot);
     end
     
-    ret = qddot;
-%     ret = obj.saturateAccelerations(obj.q, obj.qdot, qddot);
-      
+    ret = qddot;      
 end

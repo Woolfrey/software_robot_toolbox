@@ -1,8 +1,9 @@
 %% Circular Trajectory Class
 % Jonathan Woolfrey
 % August 2019
-
-
+%
+% This generates circular trajectories. It builds upon the quintic
+% polynomial.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 

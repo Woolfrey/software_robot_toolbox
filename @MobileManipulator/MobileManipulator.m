@@ -39,10 +39,10 @@ classdef MobileManipulator < handle
         torque;                                                             % Joint torques from base motion
         force;
         
-        Mmb;                                                                % Maps base acceleration to manipulator
+        Mqb;                                                                % Maps base acceleration to manipulator
         Mbb;                                                                % Added inertia on base from manipulator
-        Cmb;                                                                % Maps base velocity to manipulator
-        Cbm;                                                                % Maps joint velocities to base
+        Cqb;                                                                % Maps base velocity to manipulator
+        Cbq;                                                                % Maps joint velocities to base
     end
     
     properties (Access = private)
@@ -99,14 +99,14 @@ classdef MobileManipulator < handle
         function ret = getCdot(obj)
             ret = zeros(3,obj.arm.n);                                       % Pre-allocate memory
             if nargin == 1                                                  % Use current state information
-                [com,Jm] = obj.arm.getMassGeometry();                       % Centre of mass for each link & Jacobian
+                [com,Jc] = obj.arm.getMassGeometry();                       % Centre of mass for each link & Jacobian
                 qdot = obj.arm.qdot;                                        % Joint velocities for the manipulator
                 omega = obj.vel(4:6);                                       % Angular velocity of the base
             else
                 % Need to fill this in later
             end
             for i = 1:obj.arm.n
-                ret(:,i) = Jm(1:3,:,i)*qdot + cross(omega,com(:,i));
+                ret(:,i) = Jc(1:3,:,i)*qdot + cross(omega,com(:,i));
             end
         end
         

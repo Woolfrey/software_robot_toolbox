@@ -1,24 +1,13 @@
-%% SerialLink.getAcc()
-% Jonathan Woolfrey
+%% SerialLink.vellipse()
+% Jon Woolfrey
+% October 2020
 %
-% This function computes the joint accelerations from a given joint torque:
-%
-% qddot = M^-1(tau - C*qdot - g),
-%
-% where:
-% - qddot (nx1) is a vector of joint accelerations,
-% - M  (nxn) is the inertia matrix,
-% - tau (nx1) is the input joint torque vector
-% - C (nxn) is the Coriolis matrix,
-% - g (nx1) is the gravity torque vector.
-%
-% Inputs:
-% - tau
-% - qdot (optional)
-% - q (joint positions, also optional)
-%
-% Output:
-% - qddot
+% This function plots the velocity ellipsoid for a serial link manipulator.
+% This represents the relative ease that the end-effector can move in
+% Cartesian space. Since an ellipsoid cannot be visualized for dimensions
+% higher than 3, only the velocity component is plotted. An optional joint
+% configuration can be input as an argument, otherwise the current
+% manipulator state is used.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -40,20 +29,17 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = getAcc(obj,tau,qdot,q)
-    
-    if nargin == 2
-        qdot = obj.qdot;
-        M = obj.M;
-        C = obj.C;
-        g = obj.grav;
-    elseif nargin == 4
-        M = obj.getInertia(q);
-        C = obj.getCoriolis(q,qdot);
-        g = obj.getGrav(q);
+function vellipse(obj,q)
+    if nargin == 1
+        q = obj.q;                      % Use current joint positions
+        centre = obj.tool.pos;          % Use current end-effector pose
     else
-        error("Incorrect number of inputs.");
+        centre = obj.fk(q).pos;         % Compute end-effector position at given joint configuration
     end
     
-    ret = M\(tau - C*qdot - g);
+    J = obj.getJacobian(q);
+    A = inv(J(1:3,:)*J(1:3,:)');
+    hold on
+    plotEllipse(5*A,'Centre',centre);
+    hold off
 end

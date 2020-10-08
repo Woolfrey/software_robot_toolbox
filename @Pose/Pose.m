@@ -4,7 +4,13 @@
 %
 % This class defines relative position and orientation between references
 % frames. It is defined by a position vector (3x1) and a Rotation object.
-
+%
+% Poses can be concatenated by multiplying two pose objects together:
+%
+% Pose_3 = Pose_1*Pose_2
+%
+% Using Pose.matrix will return the 4x4 homogeneous transformation matrix
+% associated with this pose representation.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -59,7 +65,7 @@ classdef Pose < handle
         
         % Compute the position and rotation error between this pose and
         % another
-        function ret = error(obj,desired)        
+        function ret = error(obj,desired)
             ret = [desired.pos - obj.pos;                                	% Return the position error
                    obj.rot.error(desired.rot)];                            	% Return quaternion vector
         end
@@ -76,7 +82,7 @@ classdef Pose < handle
         
         %%%%% Operators %%%%%        
         function ret = mtimes(a,b)
-            ret = Pose(a.pos + a.rot.rotate(b.pos), a.rot*b.rot);           % Multiply 2 poses
+            ret = Pose(a.transform(b.pos), a.rot*b.rot);           % Multiply 2 poses
         end
     end
     

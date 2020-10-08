@@ -1,24 +1,8 @@
-%% SerialLink.getAcc()
-% Jonathan Woolfrey
+%% MobileManipulator.getMmb
+% Jon Woolfrey
 %
-% This function computes the joint accelerations from a given joint torque:
-%
-% qddot = M^-1(tau - C*qdot - g),
-%
-% where:
-% - qddot (nx1) is a vector of joint accelerations,
-% - M  (nxn) is the inertia matrix,
-% - tau (nx1) is the input joint torque vector
-% - C (nxn) is the Coriolis matrix,
-% - g (nx1) is the gravity torque vector.
-%
-% Inputs:
-% - tau
-% - qdot (optional)
-% - q (joint positions, also optional)
-%
-% Output:
-% - qddot
+% Get the inertia matrix of base acceleration in the manipulator.
+% This is a work in progress.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -40,20 +24,16 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = getAcc(obj,tau,qdot,q)
-    
-    if nargin == 2
-        qdot = obj.qdot;
-        M = obj.M;
-        C = obj.C;
-        g = obj.grav;
-    elseif nargin == 4
-        M = obj.getInertia(q);
-        C = obj.getCoriolis(q,qdot);
-        g = obj.getGrav(q);
+% Maps base acceleration to forces on the manipulator and vice versa
+function ret = getMmb(obj)
+    ret = zeros(obj.arm.n,6);                                               % Pre-allocate memory
+    if nargin == 1                                                          % Use current state
+        [com, Jc, I] = obj.arm.getMassGeometry();                           % Inertia properties            
     else
-        error("Incorrect number of inputs.");
+        % Need to fill in this later
     end
-    
-    ret = M\(tau - C*qdot - g);
+    for i = 1:obj.arm.n                                                     % Cycle through every link
+        ret = ret + [obj.arm.link(i).mass*Jc(1:3,:,i)', ...
+               Jc(4:6,:,i)'*I(:,:,i) - obj.arm.link(i).mass*Jc(1:3,:,i)'*skew(com(:,i))];
+    end
 end

@@ -3,8 +3,32 @@
 % August 2019
 %
 % This class defines a simple link object. Creating this object without any
-% input parameters results in a default link.
+% input parameters results in a default link. The fundamental geometry of a
+% link is defined by the DH parameters in the following order:
+% - theta:      Rotation about the z-axis
+% - d:          Translation along the z-axis
+% - a:          Translation along the x-axis
+% - alpha:      Rotation about the x-axis
+%
+% Setting theta as [] results in a revolute joint. Conversely, setting d as
+% [] results in a prismatic joint.
+%
+% All link properties can be set on creation using:
+%
+% link = Link("property1",input1, "property2", input2, ... )
 
+% The other properties, besides the DH parameters, are:
+% - colors:     Used for rendering a 3D model
+% - com:        The location of the centre of mass (m) from the origin
+% - faces:      Used for rendering a 3D model
+% - inertia:    The 3x3 inertia tensor (kg-m^2)
+% - mass:       The mass of the link (kg)
+% - qlim:       The upper and lower limits for the joint on this link
+% - tlim:       The torque limit for the joint on this link
+% - vertices:   Used for rendering a 3D model
+% - vlim:       The velocity limit for the joint on this link
+% - offset:     Offset from the "zero" position of the joint in the DH
+% model from the real model.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -26,7 +50,7 @@
 %
 % jonathan.woolfrey@gmail.com
 
-classdef Link < handle
+classdef Link
     
     %%%%%%%%%  PROPERTIES %%%%%%%%%%
     properties (Access = public)
@@ -36,7 +60,7 @@ classdef Link < handle
         com = [-0.5;0;0];                                               	% Centre of mass in local link frame (m)
         d = 0;                                                              % DH Parameter
         faces = [];                                                         % Used for 3D modeling
-        inertia = [0.01 0.00 0.00                                           
+        inertia = [0.10 0.00 0.00                                           
                    0.00 0.10 0.00
                    0.00 0.00 0.10];                                      	% Inertia matrix in local frame (kg.m^2)
         mass = 1;                                                          	% Mass of the link (kg)
@@ -45,7 +69,7 @@ classdef Link < handle
         tlim = 20;                                                          % Torque limits
         isrevolute = true;                                                  % revolute or prismatic
         vertices = [];                                                      % Used for 3D modeling
-        vlim = 100*2*pi/60;                                                 % Velocity limits
+        vlim = 100*2*pi/60;                                                 % Velocity limits (in rad/s)
         offset = 0;                                                         % Joint offset to account for DH parameters
     end
     

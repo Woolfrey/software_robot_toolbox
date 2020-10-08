@@ -38,14 +38,15 @@
 % jonathan.woolfrey@gmail.com
 
 function ret = matrix(obj)
-    ret = zeros(3,3);
-    ret(1,1) = obj.quat(1)^2 + obj.quat(2)^2 - obj.quat(3)^2 - obj.quat(4)^2;
-    ret(1,2) = 2*(obj.quat(2)*obj.quat(3) - obj.quat(1)*obj.quat(4));
-    ret(1,3) = 2*(obj.quat(2)*obj.quat(4) + obj.quat(1)*obj.quat(3));
-    ret(2,1) = 2*(obj.quat(2)*obj.quat(3) + obj.quat(1)*obj.quat(4));
-    ret(2,2) = obj.quat(1)^2 - obj.quat(2)^2 + obj.quat(3)^2 - obj.quat(4)^2;
-    ret(2,3) = 2*(obj.quat(3)*obj.quat(4) - obj.quat(1)*obj.quat(2));
-    ret(3,1) = 2*(obj.quat(2)*obj.quat(4) - obj.quat(1)*obj.quat(3));
-    ret(3,2) = 2*(obj.quat(3)*obj.quat(4) + obj.quat(1)*obj.quat(2));
-    ret(3,3) = obj.quat(1)^2 - obj.quat(2)^2 - obj.quat(3)^2 + obj.quat(4)^2;
+      ret = Rotation.quat2rot(obj.quat);
+%     ret = zeros(3,3);
+%     ret(1,1) = obj.quat(1)^2 + obj.quat(2)^2 - obj.quat(3)^2 - obj.quat(4)^2;
+%     ret(1,2) = 2*(obj.quat(2)*obj.quat(3) - obj.quat(1)*obj.quat(4));
+%     ret(1,3) = 2*(obj.quat(2)*obj.quat(4) + obj.quat(1)*obj.quat(3));
+%     ret(2,1) = 2*(obj.quat(2)*obj.quat(3) + obj.quat(1)*obj.quat(4));
+%     ret(2,2) = obj.quat(1)^2 - obj.quat(2)^2 + obj.quat(3)^2 - obj.quat(4)^2;
+%     ret(2,3) = 2*(obj.quat(3)*obj.quat(4) - obj.quat(1)*obj.quat(2));
+%     ret(3,1) = 2*(obj.quat(2)*obj.quat(4) - obj.quat(1)*obj.quat(3));
+%     ret(3,2) = 2*(obj.quat(3)*obj.quat(4) + obj.quat(1)*obj.quat(2));
+%     ret(3,3) = obj.quat(1)^2 - obj.quat(2)^2 - obj.quat(3)^2 + obj.quat(4)^2;
 end

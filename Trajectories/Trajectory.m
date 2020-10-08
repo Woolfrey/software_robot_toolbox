@@ -5,8 +5,6 @@
 % This is a static class with common functions for both the Quintic and
 % Trapezoidal trajectory objects.
 
-
-
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
 % This file is part of the Robot Toolbox I developed for MATLAB.
@@ -37,8 +35,7 @@ classdef Trajectory
             acc = sdd*(p2 - p1);
         end
         
-        
-        % Spherical Linear Interpolation; for quaternions
+        % Spherical Linear Interpolation for quaternions
         function [pos, vel, acc] = slerp(s,sd,sdd,p1,p2,theta)             
             if length(p1) ~= 4 || length(p2) ~= 4
                 error("slerp() is only used for quaternions; expected a 4x1 vector for inputs p1, p2.");

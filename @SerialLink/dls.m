@@ -1,9 +1,18 @@
 %% Damped-Least-Squares inversion of the Jacobian matrix
 % Jonathan Woolfrey
 %
-% This function computes the damped-least-squares inverse of a matrix.
-
-
+% This function computes the damped-least-squares inverse of a matrix. For
+% a matrix J, the DLS inverse is:
+%
+% J_inv = J'*(J*J' + lambda*eye(n))^-1,
+%
+% where n is the number of columns. Lambda is the damping parameter. It is
+% autonomously computed using the threshold value and maximum damping value
+% in the corresponding serial link class:
+%
+% lambda = (1 - (manipulability/threshold)^2)*max_damping.
+%
+% If the manipulability is above the threshold value, lambda = 0.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -25,31 +34,34 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = dls(obj,J,epsilon,lambdaMax,W,verbose)    
+function ret = dls(obj,J,W,option)
+    verbose = false;
     
-    if nargin < 5
+    if nargin < 2
+        J = obj.getJacobian();
+    end
+    if nargin < 3
         W = eye(obj.n);
-        verbose = false;
-    elseif nargin < 6
-        verbose = false;
-    elseif nargin == 6
-        if strcmp(verbose,'verbose')
+    end
+    if nargin == 4
+        if strcmp(option,"verbose")
             verbose = true;
         else
-            error("Incorrect spelling. Input 'verbose' as 5th argument to display information in the console.");
+            error("Incorrect spelling. Input 'verbose' as 5th argument to print information in the console.");
         end
     end
-            
-    mu = sqrt(det(J*J'));                                                   % Compute manipulability
-        
-    if mu < epsilon                                                         % Manipulability below threshold
-        lambda = (1 - (mu/epsilon)^2)*lambdaMax;                            % Compute damping factor
+    
+    obj.manipulability = sqrt(det(J*J'));
+    
+    if obj.manipulability < obj.threshold
+        obj.damping = (1 - (obj.manipulability/obj.threshold)^2)*obj.maxDamping;
         if verbose
-            disp("Manipulator is near-singular!");
+            warning("The manipulator is near singular!");
         end
     else
-        lambda = 0;
+        obj.damping = 0;
     end
-    invWJt = W\J';                                                          % Make calculations a little faster
-    ret = invWJt/(J*invWJt + lambda*eye(6));
+    invWJt = W\J';      % Hopefully this makes calcs a little faster
+    ret = invWJt/(J*invWJt + obj.damping*eye(6));
+
 end

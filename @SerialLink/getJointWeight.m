@@ -2,12 +2,11 @@
 % Jonathan Woolfrey
 %
 % This function returns a weighting matrix for joint limit avoidance of a
-% redundant manipulator.
-%
-% TO DO:
-%   - Figure out a proper scaling factor
-
-
+% redundant manipulator. This is based on the following paper:
+% Tan Fung Chan and R. V. Dubey, "A weighted least-norm solution based scheme
+% for avoiding joint limits for redundant joint manipulators," in IEEE 
+% Transactions on Robotics and Automation, vol. 11, no. 2, pp. 286-292, April 
+% 1995, doi: 10.1109/70.370511.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -29,20 +28,16 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = getJointWeight(obj,pos,vel)
-    ret = zeros(obj.n,obj.n);                                            	% Preallocate memory
+function ret = getJointWeight(obj,q,qdot)
+    
+    ret = eye(obj.n);                         % Joint weighting matrix to return
     for i = 1:obj.n
-        s = 5000*(obj.link(i).qlim(2) - obj.link(i).qlim(1))^(-2);        	% Individual joint scalar
-        u = obj.link(i).qlim(2) - pos(i);                                   % Distance from upper limit
-        v = pos(i) - obj.link(i).qlim(1);                                   % Distance from lower limit
-        df = (u^2 - v^2)/(-s*u^2*v^2);                                      % Gradient of penalty function
-        fdot = vel(i)*df;                                                   % Time-derivative of penalty function
-        if fdot > 0                                                         % If moving toward a joint...
-            if abs(df) > 1E10
-                ret(i,i) = 1E10;                                            % Ensure the number is not infinite
-            else
-                ret(i,i) = abs(df);                                         % Add weighting
-            end
+        u = obj.link(i).qlim(2) - q(i);       % Proximity to upper limit
+        v = q(i) - obj.link(i).qlim(1);       % Proximity to lower limit
+        dp = -u^-2 - v^-2;                    % Partial-derivative
+        pdot = dp*qdot(i);                    % Time-derivative
+        if pdot > 0
+            ret(i,i) = 1/u + 1/v - 4/(obj.link(i).qlim(2) - obj.link(i).qlim(1)) + 1;
         end
     end
 end

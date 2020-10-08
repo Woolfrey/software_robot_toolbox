@@ -18,7 +18,6 @@
 %       EE = robot.fk();
 
 
-
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
 % This file is part of the Robot Toolbox I developed for MATLAB.
@@ -40,16 +39,16 @@
 % jonathan.woolfrey@gmail.com
 
 function [FK, ALL] = fk(obj,q,baseTF)
-    if nargin == 1                                                          % No inputs, use current state
-        q = obj.q;                                                          % Current joint state
-        baseTF = obj.base;                                                  % Current base pose
-    elseif nargin == 2                                                      % Joint state, but no base pose
+
+    if nargin == 2                                                      % Joint state, but no base pose
         baseTF = obj.base;
     end
-    ALL(1,obj.n) = Pose();                                                  % Create array of poses
-    ALL(1) = baseTF*obj.link(1).getPose(q(1));                              % Multiply first link pose by base
+    
+    ALL(obj.n,1) = Pose();                                               % Create array of poses
+	ALL(1) = baseTF*obj.link(1).getPose(q(1));                              % Multiply first link pose by base
     for i = 2:obj.n
         ALL(i) = ALL(i-1)*obj.link(i).getPose(q(i));                        % Compute FK chain
     end
-    FK = ALL(obj.n);                                                        % End-effector pose is last in chain
+
+    FK = ALL(obj.n);    % End-effector pose is last in chain
 end

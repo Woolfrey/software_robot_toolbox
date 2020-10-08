@@ -43,10 +43,12 @@ load ur3.mat;
 
 %% Parameters
 animate = 1;
-method = 1;                                                                 % 1 = PD+, 2 = Inverse dynamics
-dt = 1/100;                                                                 % Inverse of control frequency
-steps = 15/dt;                                                              % Total no. of steps to run simulation
-workspace = [-0.2 0.8 -0.5 0.5 0 1];                                        % Workspace for plotting robot
+dt = 1/robot.hertz;                   	% Discrete time step, for simulation purposes
+Kp = 50;                                % Proportional feedback
+Kd = 15;                                % Derivative feedback
+method = 2;                             % 1 = Velocity control, 2 = Torque control
+steps = 15/dt;                          % Total no. of steps to run the simulation
+workspace = [-0.2 0.8 -0.5 0.5 0 1];    % Workspace for plotting the robot
 
 %% Generate End-Effector Poses
 
@@ -103,19 +105,15 @@ for i = 1:steps
     
     
     switch method
-        case 1 % PD+
-            M = robot.getInertia();                                     	% Get inertia at current state
-            Kp = 50*M;                                                   	% Position error gain
-            Kd = 15*M;                                                    	% Velocity error gain
-            tau = robot.pdPlus(vel,Kd,pos,Kp);                           	% Compute required joint torque
-        case 2 % Inverse Dynamics
-            Kp = 50;                                                        % Position error gain
-            Kd = 15;                                                        % Velocity error gain
-            tau = robot.invDynamics(acc,vel,Kd,pos,Kp);                     % Required joint torque
+        case 1 % Velocity-level control                                                  	% Velocity error gain
+            vd = vel + Kp*(pos - q);
+            ad = 90*(vd - qdot);
+        case 2 % Torque-level control
+            ad = acc + Kp*(pos - q) + Kd*(vel - qdot);
         otherwise
             error('Control method incorrectly specified.')
     end
-
+    tau = robot.invDynamics(ad);
     qddot = robot.getAcc(tau);                                              % This is just for simulation purposes
     
     if animate && mod(i,50) == 0

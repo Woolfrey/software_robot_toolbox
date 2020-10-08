@@ -9,8 +9,6 @@
 % TO DO:
 %   - Fill in code for optional joint position input
 
-
-
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
 % This file is part of the Robot Toolbox I developed for MATLAB.
@@ -31,25 +29,13 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = maxManipulability(obj,alpha,q)
-
-    if nargin == 1
-        a = 0.1;
-        dJdq = obj.getPartialJacobian();                                    % Compute at current joint state
-    elseif nargin == 2
-        a = alpha;
-        dJdq = obj.getPartialJacobian();
-    else
-        %%% Need to fill this in %%%
-    end
-    J = obj.getJacobian();
-    mu = sqrt(det(J*J'));                                                   % Compute manipulability
-    invJ = obj.dls(J,mu,1E-2,0.2);                                          % DLS inverse
-    
-    g = zeros(obj.n,1);                                                     % Gradient vector
+function ret = maxManipulability(obj,alpha)
+    g = zeros(obj.n,1);                 % Memory allocation for gradient vector
+    J = obj.getJacobian();              % Jacobian matrix
+    dJdq = obj.getPartialJacobian();    % Partial-derivative of the Jacobian
+    invJ = obj.dls(J);                  % Pseudo-inverse Jacobian
     for i = 2:obj.n
-        g(i) = mu*trace(dJdq(:,:,i)*invJ);                                  % Compute gradient
+        g(i) = obj.manipulability*trace(dJdq(:,:,i)*invJ); % Gradient of manipulability
     end
-        
-    ret = a*g;
+    ret = alpha*g;
 end

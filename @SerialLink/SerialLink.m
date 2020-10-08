@@ -3,12 +3,10 @@
 % August 2019
 %
 % This class defines an object of multiple Link objects attached in
-% sequence.
-
-% TO DO:
-%   - Forward declarations of functions in external script files
-
-
+% sequence. A serial link manipulator is created by passing an array of
+% Link objects as an input:
+%
+% robot = SerialLink([Link1 Link2 Link3 ... Linkn ])
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -35,19 +33,24 @@ classdef SerialLink < handle
     %%%%%%%%%% PROPERTIES %%%%%%%%%%
     properties (Access = public)
         base;                                                               % Base pose
+        basecolors = [];                                                    % For 3D modeling        
         basefaces = [];                                                     % For 3D modeling
         basevertices = [];                                                  % For 3D modeling
-        basecolors = [];                                                    % For 3D modeling
+        baseVelocity = zeros(3,1);  % This is used for mobile manipulators
         C;                                                                  % Coriolis matrix
+        damping;                % Coefficient for Damped Least Squares
         grav;                                                            	% Gravitational torque
         hertz = 100;                                                        % Default control frequency
         link;                                                               % Array of Link objects
         M;                                                                  % Inertia matrix
+        manipulability = 1;     % Measure of manipulability
+        maxDamping = 0.2;       % Maximum damping to apply for Damped Least Squares
         n;                                                                  % No. of joints
-        name;                                                               % Unique identifier
+        name = "robot";                                                               % Unique identifier
         q;                                                                  % Joint positions
         qdot;                                                               % Joint velocities
-        tool;                                                               % Tool or end-effector pose
+        threshold = 0.1;       % Threshold value for activating Damped Least Squares
+        tool = Pose();          % Tool transform
     end
     
     properties (Access = private)
@@ -83,7 +86,7 @@ classdef SerialLink < handle
         end
         
         % Update State
-        function updateState(obj,q,qdot,baseTF)            
+        function updateState(obj,q,qdot,baseTF,baseVel)            
             if nargin == 2                                                  % No joint velocities, base pose given
                 warning("Joint velocities assumed to be zero.");
                 qdot = zeros(obj.n,1);                                      % Set velocities to zero
@@ -92,12 +95,15 @@ classdef SerialLink < handle
                 baseTF = obj.base;                                          % Use current base pose
             elseif nargin == 4
                 obj.base = baseTF;                                          % Update base pose
+            elseif nargin == 5
+                obj.base = baseTF;
+                obj.baseVelocity = baseVel;
             end
             
             % Update Kinematics
             obj.q = q;                                                      % Assign joint positions
             obj.qdot = qdot;                                                % Assign joint velocities
-            [obj.tool, obj.fkchain] = obj.fk(obj.q,baseTF);              	% Compute forward kinematics
+            [obj.tool, obj.fkchain] = obj.fk(obj.q,obj.base);
             obj.a = obj.getAxis();                                          % Relies on FK
             obj.r = obj.getDist();                                          % Relies on FK
             obj.omega = obj.getOmega();                                     % Relies on qdot, a
@@ -115,9 +121,12 @@ classdef SerialLink < handle
         end
         
         % Forward Declarations
-        ret = pdPlus(obj,pos,Kp,vel,Kd)                                     % PD plus joint control
-        ret = getAcc(obj,tau,q,qdot)                                        % Convert torque to acceleration
-        ret = dls(obj,J,epsilon,lambdaMax,W,verbose);                       % Damped Least Squares inverse
+        ret = constrainJointMotion(obj,jointMotion,eeMotion,J,damping,upper,lower)
+        ret = dls(obj,J,W,verbose);                         % Damped Least Squares inverse
+        ret = getAcc(obj,tau,q,qdot);                       % Convert torque to acceleration
+        ret = pdPlus(obj,pos,Kp,vel,Kd);                    % PD plus joint control
+        vellipse(obj,q);                                    % Velocity ellipsoid
+        fellipse(obj,q);                                    % Force ellipsoid
     end
     
     methods (Access = private)
@@ -194,7 +203,7 @@ classdef SerialLink < handle
                 axis = obj.a;
             end
             if obj.link(1).isrevolute                                       % Revolute joint
-                ret(:,1) = vel(1)*axis(:,1);                                % Angular velocity
+                ret(:,1) = obj.baseVelocity + vel(1)*axis(:,1);                                % Angular velocity
             end
             for i = 2:obj.n
                 ret(:,i) = ret(:,i-1);                                      % Add previous velocity

@@ -6,10 +6,16 @@
 %
 %           xddot = J*qddot + Jdot*qdot,
 %
-% where J is the Jacobian and Jdot is its time-derivative. This matrix is
+% where J (6xn) is the Jacobian and Jdot is its time-derivative. This matrix is
 % required for resolved acceleration control and impedance control.
-
-
+%
+% Inputs:
+% - q           Joint positions (nx1)
+% - qdot        Joint velocities (nx1)
+% - baseTF      Pose object representing the base transform
+%
+% Outputs:
+% - Jdot (6xn)
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 

@@ -28,11 +28,11 @@ function updateState(obj,pose,vel,acc,q,qdot)
     obj.acc = acc;                                                          % Update base acceleration 
     obj.pose = pose;                                                        % Update location
     obj.vel = vel;                                                          % Update base velocity
-    obj.arm.updateState(q,qdot,obj.pose*obj.baseTF);                        % Update manipulator kinematics, dynamics    
+    obj.arm.updateState(q,qdot,obj.pose*obj.baseTF,vel(4:6));                        % Update manipulator kinematics, dynamics    
     
     % Inertial effects for the arm
     obj.cdot = obj.getCdot();
-    obj.Mmb = obj.getMmb();                                                 % Maps base acceleration to joint torque
-    obj.Cmb = obj.getCmb();                                                 % Maps base velocity to joint torque
-    obj.torque = -obj.Mmb*obj.acc - obj.Cmb*obj.vel;                     	% Torque needed to oppose base motion effects
+    obj.Mqb = obj.getMqb();                                                 % Maps base acceleration to joint torque
+    obj.Cqb = obj.getCqb();                                                 % Maps base velocity to joint torque
+    obj.torque = -obj.Mqb*obj.acc - obj.Cqb*obj.vel;                     	% Torque needed to oppose base motion effects
 end

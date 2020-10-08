@@ -27,36 +27,21 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = rac(obj, acc, vel, Kv, Kw, pos, Kp, Ko, qddr, qdr)
-
+function ret = rac(obj, acc, vel, pos, redundant)
+    if nargin == 4
+        redundant = zeros(obj.arm.n,1);
+    end
+    
     r = obj.arm.tool.pos - obj.pose.pos;                                    % Distance from origin to end-effector
     Sa = skew(obj.acc);                                                     % Skew-symmetric matrix of angular acceleration
     Sw = skew(obj.vel);                                                     % Skew-symmetric matrix of angular velocity
     J = obj.arm.getJacobian();                                              % Manipulator Jacobian at current state
     Jdot = obj.arm.getJdot();
-    xddot = acc - obj.acc - [(Sa + Sw^2)*r; zeros(3,1)] ...
-            - [Jdot(1:3,:) + 2*Sw*J(1:3,:); Jdot(4:6,:)]*obj.arm.qdot;
+   
+    xddot = acc - Jdot*obj.arm.qdot - obj.acc - [Sa*r + Sw^2*r; zeros(3,1)];
+    
+    xdot = vel - obj.vel - [Sw*r;zeros(3,1)];
 
-    if nargin < 9
-        qddr = zeros(obj.arm.n,1);                                       	% No redundant accelerations
-    else
-        xdot = vel - obj.vel - [Sw*r; zeros(3,1)];                      	% Compensation for base motion
-    end
-    if nargin < 6
-        pos = Pose();                                                       % Pose is arbitrary
-        Kp = 0;                                                             % No proportional feedback
-        Ko = 0;
-    end
-    if nargin < 3
-        xdot = zeros(6,1);                                                	% Desired velocity arbitrary
-        Kv = 0;                                                             % No velocity feedback
-        Kw = 0;
-    end
-
-    if nargin < 10
-        ret = obj.arm.rac(xddot, xdot, Kv, Kw, pos, Kp, Ko, qddr);          % No redundant velocities specified
-    else
-        ret = obj.arm.rac(xddot, xdot, Kv, Kw, pos, Kp, Ko, qddr, qdr);    	% Redundant velocities specified
-    end
-        
+    ret = obj.arm.rac(xddot, xdot, pos, redundant);
+  
 end

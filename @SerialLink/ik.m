@@ -4,13 +4,13 @@
 % This function will solve the inverse kinematics of a serial link
 % manipulator for a desired end-effector pose.
 %
-% By default, this algorithm uses the Jacobian transpose method to maintain
-% numerical stabilitity in the solution:
+% By default, this algorithm uses the Jacobian inverse method as it appears to
+% be faster:
 %
-%           q(k+1) = q(k) + alpha*J'*e
+%           q(k+1) = q(k) + alpha*inv(J)*e
 %
-% However, the Newton-Raphson method, which uses the inverse of the
-% Jacobian, can be specified as an option.
+% However, the transpose method can be specified as an option. This does
+% not suffer from instability at singularities.
 %
 % Inputs:
 %   - desired:      The desired end-effector pose (Pose object)
@@ -47,7 +47,7 @@ function ret = ik(obj,desired,q0,varargin)
 	method = 'inverse';
 	minstep = 1E-4;
 	origin = obj.base;
-	steps = 3E3;
+	steps = 1E3;
 	W = diag([1 1 1 0.05 0.05 0.05]);                                   	% Default weighting matrix                             
         
     if nargin == 2                                                        	% No initial guess given
@@ -101,7 +101,7 @@ function ret = ik(obj,desired,q0,varargin)
                 else
                     W = eye(obj.n);
                 end
-                dq = obj.dls(J,1E-1,0.5,W)*(e - 0.75*de);               	% Use pseudoinverse Jacobian
+                dq = obj.dls(J,W)*(e - 0.75*de);                            % Use pseudoinverse Jacobian
                 
             case 'transpose'
                 dq = J'*(e-0.4*de);                                         % Use transpose
@@ -114,18 +114,19 @@ function ret = ik(obj,desired,q0,varargin)
             disp(['Minimum step size attained in ', num2str(count), ' steps.'])
             break
         end
-        qPrev = q;
+       
         q = q + dq;                                                         % Update new joint configuration
-        count = count + 1;
         
-        % Ensure joint limits are obeyed in the solution
+        %Ensure the solution is within joint limits  
         for j = 1:obj.n
-            if q(j) < obj.link(j).qlim(1)
-                q(j) = obj.link(j).qlim(1);
-            elseif q(j) > obj.link(j).qlim(2)
+            if q(j) > obj.link(j).qlim(2)
                 q(j) = obj.link(j).qlim(2);
+            elseif q(j) < obj.link(j).qlim(1)
+                q(j) = obj.link(j).qlim(1);
             end
         end
+        
+        count = count + 1;
         
         if animate
             obj.plot3D(q,'workspace',[-0.2 0.6 -0.5 0.5 -0.3 0.7]);
@@ -142,7 +143,7 @@ function ret = ik(obj,desired,q0,varargin)
             disp(['Step ', num2str(count),' of ',num2str(steps),'...'])
         end
         if count == steps
-            disp('Maximum number of iterations executed.')
+            disp("Failed to solve inverse kinematics in "+num2str(steps)+" steps. Try altering the initial guess for the joint configuration.")
         end
 
     end

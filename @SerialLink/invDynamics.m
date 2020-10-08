@@ -2,7 +2,25 @@
 % Jonathan Woolfrey
 %
 % Computes the joint torques required to control a serial link manipulator.
-
+% 
+% Inputs:
+% - accel           Joint accelerations to be achieved (nx1)
+% - vel             Current joint velocities (nx1) (optional)
+% - pos             Current joint positions (nx1) (optional)
+%
+% The joint torques are given by:
+%
+% tau = M*acc + C*vel + g,
+%
+% where g is the gravitational torque vector. If the velocity and positions
+% are given, the dynamics equation will be computed accordingly. Otherwise,
+% the current manipulator state is used.
+%
+% This function will also saturate any joint torques that violate joint
+% limits.
+%
+% TO DO:
+%   - Add friction and payload forces to the torque equation
 
 
 % Copyright (C) Jon Woolfrey, 2019-2020
@@ -25,21 +43,24 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = invDynamics(obj,acc,vel,Kd,pos,Kp)
-    
-    switch nargin
-        case 2
-            qddot = acc;
-        case 4
-            qddot = acc + Kd*(vel - obj.qdot);
-        case 6
-            qddot = acc + Kp*(pos - obj.q) + Kd*(vel - obj.qdot);
-        otherwise
-            error('Incorrect number of input arguments.');
+function ret = invDynamics(obj,acc, vel, pos)
+
+    if nargin == 2              % Use current joint state
+            vel = obj.qdot;
+            pos = obj.q;
+            M = obj.M;
+            C = obj.C;
+            g = obj.grav;
+    elseif nargin == 4          % Use given joint state
+            M = obj.getInertia(pos);
+            C = obj.getCoriolis(pos,vel);
+            g = obj.getGrav(pos);
+    else
+        error("Incorrect number of inputs. If only joint acceleration is given, this method will use the current joint state to compute the joint torques. Otherwise, acceleration, velocity, and position must be given.");
     end
-        
-    tau = obj.M*qddot + obj.C*obj.qdot + obj.grav + obj.getJacobian'*[10;0;0;0;0;0];                          % Inverse dynamics calculation
     
+    tau = M*acc + C*vel + g;           
+            
    % Saturate any joint torques over the limit
    for j = 1:obj.n
        if abs(tau(j)) > obj.link(j).tlim

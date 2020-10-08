@@ -1,24 +1,9 @@
-%% SerialLink.getAcc()
-% Jonathan Woolfrey
+%% SerialLink.getMdot()
+% Jon Woolfrey
+% July 2020
 %
-% This function computes the joint accelerations from a given joint torque:
-%
-% qddot = M^-1(tau - C*qdot - g),
-%
-% where:
-% - qddot (nx1) is a vector of joint accelerations,
-% - M  (nxn) is the inertia matrix,
-% - tau (nx1) is the input joint torque vector
-% - C (nxn) is the Coriolis matrix,
-% - g (nx1) is the gravity torque vector.
-%
-% Inputs:
-% - tau
-% - qdot (optional)
-% - q (joint positions, also optional)
-%
-% Output:
-% - qddot
+% This function computes the time-derivative of the inertia matrix for
+% a serial-link manipulator.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -40,20 +25,23 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = getAcc(obj,tau,qdot,q)
+function ret = getMdot(obj)
+
+    ret = zeros(obj.n,obj.n);
     
-    if nargin == 2
-        qdot = obj.qdot;
-        M = obj.M;
-        C = obj.C;
-        g = obj.grav;
-    elseif nargin == 4
-        M = obj.getInertia(q);
-        C = obj.getCoriolis(q,qdot);
-        g = obj.getGrav(q);
+    if nargin == 1
+        K = obj.Jm;
+        Kdot = obj.Jmdot;
+        I = obj.H;
+        Idot = obj.Hdot;
     else
-        error("Incorrect number of inputs.");
+        % Need to fill this in
     end
     
-    ret = M\(tau - C*qdot - g);
+    for i = 1:obj.n
+        ret = ret + 2*obj.link(i).mass*K(1:3,:,i)'*Kdot(1:3,:,i) ...
+                  + 2*K(4:6,:,i)'*I(:,:,i)*Kdot(4:6,:,i) ...
+                  + K(4:6,:,i)'*Idot(:,:,i)*K(4:6,:,i);
+    end
+
 end

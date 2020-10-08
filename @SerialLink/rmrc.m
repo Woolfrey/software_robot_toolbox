@@ -1,24 +1,17 @@
 %% SerialLink.rmrc()
 % Jonathan Woolfrey
 %
-% Resolved Motion Rate Control. This function computes the joint velocities
-% required to track a given end-effector trajectory. The solution for the
-% joint velocities is computed via weighted-least-squares:
+% Resolved motion rate control. This function computes the joint velocities
+% needed to move the end-effector at a desired speed.
 %
-%       qdot = invJ*xdot,
+% Inputs:
+% - vel             Desired end-effector velocity (6x1)
+% - pos             Desired end-effector position (Pose object)
+% - Kp              Gain on the end-effector position (1x1)
+% - redundant       Joint accelerations relating to a redundant task (nx1)
 %
-% where:
-%
-%       invJ = W^-1*J'*(J*W^-1*J')^-1,
-%
-% and W is a positive-definite weighting matrix. By default, this weighting
-% matrix combines the inertia matrix with a penalty term based on proximity
-% to the joint limits to enable joint limit avoidance.
-%
-% This function will also check for singularities and add damping to allow
-% inversion of the Jacobian as necessary.
-
-
+% Output:
+% - Joint velocities (nx1)
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -40,38 +33,31 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = rmrc(obj,vel,pose,Kp,Ko,qdr)
+function ret = rmrc(obj,vel,pose,Kp,redundant)
     
-    epsilon = 1E-2;                                                         % Threshold for activating DLS
-    lambdaMax = 0.1;                                                        % Maximum damping value
-    
-    switch nargin
-        case 2        
-            e = zeros(6,1);                                                 % No feedback control
-            Kp = 0;
-            Ko = 0;
-            qdr = zeros(obj.n,1);
-        case 5
-            e = obj.tool.error(pose);                                       % Current pose error
-            qdr = zeros(obj.n,1);
-        case 6
-            e = obj.tool.error(pose);
+    if nargin == 2
+        xdot = vel;
+    elseif nargin > 2
+        e = obj.tool.error(pose);
+        xdot = vel + Kp*e;
     end
-            
-    xdot = vel + [Kp*e(1:3); Ko*e(4:6)];
     
-    J = obj.getJacobian();                                                  % Compute Jacobian at current pose
+    J = obj.getJacobian();                                	% Compute Jacobian at current pose
     if obj.n > 6
-        W = obj.M + obj.getJointWeight(obj.q,obj.qdot);                     % Weighted solution
-        invJ = obj.dls(J,epsilon,lambdaMax,W);                              % Weighted pseuodinverse
-        N = eye(obj.n) - invJ*J;                                            % Null space projection matrix
-        qdot = invJ*xdot + N*qdr;                                           % rmrc with redundant task
+        W = obj.M + obj.getJointWeight(obj.q,obj.qdot); 	% Weighted solution
+        invJ = obj.dls(J,W);                                % Weighted pseuodinverse
+        if nargin < 5                                       % No redundant task specified
+            qdot = invJ*xdot;
+        else
+            N = eye(obj.n) - invJ*J;                      	% Null space projection matrix
+            qdot = invJ*xdot + N*redundant;                 % rmrc with redundant task
+        end
     else
-        invJ = obj.dls(J,epsilon,lambdaMax);
+        invJ = obj.dls(J);                                
         qdot = invJ*xdot;
     end
     
-    qdot = obj.saturateVelocities(obj.q,qdot,'scaled');                     % Obey joint constraints
+    qdot = obj.saturateVelocities(qdot);                    % Slow any joints that will hit a limit
     
     ret = qdot;
     

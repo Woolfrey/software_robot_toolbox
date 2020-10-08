@@ -34,29 +34,24 @@ clc
 load sawyer.mat;                                                            % Load the Sawyer model
 
 %% General Simulation Parameters
-animate = 0;                                                                
-dt = 1/100;
-Kp = 9E3;
-Kv = 1.5*sqrt(Kp);
-Ko = 3E3;
-Kw = 1.5*sqrt(Ko);
-steps = 10/dt;
-workspace = [-0.2 0.8 -0.5 0.5 0 1];
+animate = 1;                            % 1 = Animate                                                          
+dt = 1/100;                             % Discrete time-step, inverse of frequency
+Kp = 1000;                              % Proportional gain
+Kd = ceil(2*sqrt(Kp));                  % Derivative gain
+steps = 15/dt;                          % Total no. of steps to run simulation
+workspace = [-0.2 0.8 -0.5 0.5 0 1];    % Used when animating
 
 %% Generate Initial and Final Pose
-p1 = [0.6;-0.3; 0.7];                                                       % First position
-p2 = [0.6; 0.3; 0.7];                                                     	% Second position
-R1 = Rotation('rpy',[0; pi/2; 0]);                                          % First orientation
-R2 = Rotation('rpy',[0; pi/2; 0]);                                          % Second orientation
-T1 = Pose(p1,R1);                                                           % Create a pose object for the first
-
+p1 = [0.6;-0.3; 0.7];                   % First position
+p2 = [0.6; 0.3; 0.7];                  	% Second position
+R1 = Rotation('rpy',[0; pi/2; 0]);    	% First orientation
+R2 = Rotation('rpy',[0; pi/2; 0]);    	% Second orientation
+T1 = Pose(p1,R1);                     	% Create a pose object for the first
+T2 = Pose(p2,R2);
 %% Generate Trajectory Objects
 t0 = 1;                                                                     % Start time
-tf = 10;                                                                    % End time
-% tpos = Quintic(t0,tf,p1,p2);                                            	% Position trajectory
-% torr = Quintic(t0,tf,R1.quat,R2.quat);                                  	% Orientation trajectory
-tpos = Trapezoidal(t0,tf,p1,p2);                                          	% Position trajectory
-torr = Trapezoidal(t0,tf,R1.quat,R2.quat);                                	% Orientation trajectory
+tf = 5;                                                                    % End time
+trajectory = Cartesian([T1,T2],[t0,tf],'quintic');
 
 %% Solve Inverse Kinematics for Initial Pose
 q0 = [-0.4660   -0.1936    0.6239   -1.1375    0.2674    1.5676    0.9334]';
@@ -72,8 +67,6 @@ qddot = zeros(7,1);                                                         % Jo
 qdr = zeros(7,1);
 jointState = nan(7,steps,3);                                                % For plotting data
 trackingError = nan(2,steps);                                               % For plotting
-trajectory = nan(6,steps);                                                  % End-effector position
-torqueNorm = nan(1,steps);
 m = nan(steps,1);                                                           % Manipulability
 %% Run Simulation
 
@@ -86,21 +79,16 @@ for i = 1:steps
     t = (i-1)*dt;                                                           % Current simulation time
     
     % Get require end-effector trajectory at current time
-    [pd,vd,vdd] = tpos.lerp(t);                                          	% Linear interpolation of position                                            
-    [od,wd,wdd] = torr.slerp(t);                                          	% Spherical linear interp for quaternion
-    pos = Pose(pd,Rotation('quat',od(1),od(2:4)));                          % Convert position, orientation to Pose
-    vel = [vd;wd];                                                          % Assign the velocity vector
-    acc = [vdd;wdd];
+    [pos,vel,acc] = trajectory.getState(t);
     
     % Compute joint control
-    qdr = zeros(robot.n,1);                                                 % No redundant velocities
-    qddr = zeros(robot.n,1);                                                % No redundant accelerations
-    qdd = robot.rac(acc,vel,Kv,Kw,pos,Kp,Ko,qddr,qdr);                      % Compute joint accelerations
-    tau = robot.invDynamics(qdd);                                           % Compute joint torques
-    qddot = robot.getAcc(tau);                                              % This is only needed for simulation
+    qddr = zeros(robot.n,1);                                % No redundant accelerations
+    qdd = robot.rac(acc, vel, Kd, pos, Kp, qddr);           % Compute joint accelerations
+    tau = robot.invDynamics(qdd);                           % Compute joint torques
+    qddot = robot.getAcc(tau);                              % This is only needed for simulation
     
     if animate && mod(i,25) == 0
-        robot.plot3D(robot.q,'workspace',workspace);                        % Generate a plot of the robot
+        robot.plot3D(robot.q,'workspace',workspace);        % Generate a plot of the robot
     end
     
     % Save data for plotting
@@ -110,8 +98,6 @@ for i = 1:steps
     trackingError(1,i) = norm(pos.pos - robot.tool.pos)*1000;               % Position error
     Re = pos.rot*robot.tool.rot.inverse;    
     trackingError(2,i) = rad2deg(Re.angle);                                 % Orientation error
-    trajectory(:,i) = [robot.tool.pos; od(2:4)];                            % This is for drawing the end-effector trajectory
-    torqueNorm(i) = norm(jointState(:,i,3));
 end
 temp = steps/toc;                                                           % Stop timer and convert to frequency
 disp(['Average loop frequency: ', num2str(temp), ' Hz.']);
@@ -163,14 +149,5 @@ figure(4)
         box off
         ylabel('Orientation Error (deg)')
         xlabel('Time (s)')
-set(gcf,'Color',[1 1 1])
-
-figure(5)
-hold on
-plot(t,torqueNorm,'r','LineWidth',1)
-hold off
-title('TorqueNorm')
-xlabel('Time (s)')
-box off
 set(gcf,'Color',[1 1 1])
 

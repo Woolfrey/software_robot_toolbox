@@ -6,12 +6,11 @@
 %
 %       tau = M*qddot + C*qdot + g
 %
-% where C*qddot (nx1) is the vector of torques from Coriolis and centripetal
+% where C*qdot (nx1) is the vector of torques from Coriolis and centripetal
 % forces, and C (nxn) is the Coriolis matrix.
 %
 % TO DO:
 %   - Optional inputs for joint position q and velocity qdot
-
 
 
 % Copyright (C) Jon Woolfrey, 2019-2020

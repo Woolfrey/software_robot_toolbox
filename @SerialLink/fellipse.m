@@ -1,8 +1,13 @@
-%% SerialLink.singularityAvoidance()
-% Jonathan Woolfrey
+%% SerialLink.fellipse()
+% Jon Woolfrey
+% October 2020
 %
-% This function computes the task-reconstruction method for singularity
-% avoidance.
+% This function plots the velocity ellipsoid for a serial link manipulator.
+% This represents the relative ease that the end-effector can move in
+% Cartesian space. Since an ellipsoid cannot be visualized for dimensions
+% higher than 3, only the velocity component is plotted. An optional joint
+% configuration can be input as an argument, otherwise the current
+% manipulator state is used.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -24,32 +29,17 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = singularityAvoidance(obj,qdot)
-    epsilon = 1E-2;
-    
+function fellipse(obj,q)
     if nargin == 1
+        q = obj.q;                      % Use current joint positions
+        centre = obj.tool.pos;          % Use current end-effector pose
     else
-        % Do something here
+        centre = obj.fk(q).pos;         % Compute end-effector position at given joint configuration
     end
     
-    dJdq = obj.getPartialJacobian();                                        
-    J = obj.J;
-    JJt = J*J';
-    m = sqrt(det(JJt));
-    invJ = J'/(JJt);
-    
-    g = zeros(obj.n,1); % Gradient vector
-    
-    for i = 1:obj.n
-        g(i) = m*trace(dJdq(:,:,i)*invJ);                                   % Compute gradient vector
-    end
-    
-    mdot = qdot'*g;                                                         % Time-derivative
-    if mdot < 0 && m <= epsilon
-        a = -(g/norm(g));
-        ret = qdot - (qdot'*a)*a;
-    else
-        ret = qdot;
-    end
-
+    J = obj.getJacobian(q);
+    A = J(1:3,:)*J(1:3,:)';
+    hold on
+    plotEllipse(50*A,'Centre',centre,'FaceColor',[0 0 0.8]);
+    hold off
 end

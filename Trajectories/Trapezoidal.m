@@ -1,7 +1,21 @@
 %% Trapezoidal Velocity Profile
 % Jonathan Woolfrey
 % August 2019
-
+%
+% This creates a trajectory with a trapezoidal velocity profile between 2 points
+% in n-dimensional space.
+%
+% trajectory = Trapezoidal(t,p) generates an instance of this class, where
+% t (1x2) specifies the start and end time, and p (nx2) specifies the start
+% and end points.
+%
+% To get the desired state specified by this trajectory at the current
+% time:
+%
+% [pos, vel, acc] = trajectory.getState(time),
+%
+% where pos (nx1) is the position, vel (nx1) is the velocity, and acc (nx1)
+% is the acceleration.
 
 
 % Copyright (C) Jon Woolfrey, 2019-2020

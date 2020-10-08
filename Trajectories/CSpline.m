@@ -1,8 +1,22 @@
 %% Cubic Spline Trajectory
 % Jonathan Woolfrey
 % August 2019
-
-
+%
+% Cubic spline trajectory, used for interpolating between 3 or more points
+% in n-dimensional space. Creating an instance of this class requires:
+%
+% trajectory = Cspline(t,p)
+%
+% where:
+% - t           An array of times to pass each waypoint (1x3 minimum)
+% - p           An array of waypoints (nx3 minimum)
+%
+% To get the desired state at the current time:
+%
+% [pos, vel, acc] = trajectory.getState(time),
+%
+% where pos is a Pose object, vel (6x1) is the desired velocity, and acc
+% (6x1) is the desired acceleration.
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 

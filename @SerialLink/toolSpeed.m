@@ -15,6 +15,12 @@
 %
 % Output:
 %   - xdot:     Tool velocity (6x1)
+%
+% The tool velocity is further broken down in to its linear and angular
+% components:
+%
+%     xdot = [v (m/s)  ]
+%            [w (rad/s)]
 
 
 

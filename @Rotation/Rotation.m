@@ -5,6 +5,10 @@
 % This class defines the relative orientation between references frames.
 % The default representation is in quaternion space (H) due to its
 % computational efficiency.
+%
+% Rotations are propagated by multiplying Rotation objects together:
+%
+% R3 = R1*R2
 
 
 % Copyright (C) Jon Woolfrey, 2019-2020
@@ -77,18 +81,12 @@ classdef Rotation < handle
             end
         end
         
-        % Quaternion multiplication
+        % Quaternion multiplication        
         function ret = mtimes(a,b)
             scalar = a.quat(1)*b.quat(1) - a.quat(2:4)'*b.quat(2:4);        % Scalar
             vector = a.quat(1)*b.quat(2:4) + b.quat(1)*a.quat(2:4) ...
                      + cross(a.quat(2:4),b.quat(2:4));                      % Vector
-                 
-            if scalar < 0
-                scalar = -1*scalar;
-                vector = -1*vector;
-            end
-
-            ret = Rotation('quat',scalar,vector);
+            ret = Rotation('quat',scalar,vector);                         	% Rotation('quat',scalar,vector);
         end
         
         %%% Declaration of functions in separate files %%%
@@ -107,6 +105,7 @@ classdef Rotation < handle
     methods (Static)
         
         %%% Declaration of functions in separate class files %%%
+        ret = quat2rot(q);
         ret = rot2quat(R);                                                  % Convert from rotation matrix to quaternion
         ret = rotx(roll);                                                   % Give the rotation matrix about the x axis
         ret = roty(pitch);                                                	% Give the rotation matrix about the y axis
