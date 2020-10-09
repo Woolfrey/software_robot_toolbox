@@ -32,25 +32,25 @@ classdef SerialLink < handle
     
     %%%%%%%%%% PROPERTIES %%%%%%%%%%
     properties (Access = public)
-        base;                                                               % Base pose
-        basecolors = [];                                                    % For 3D modeling        
-        basefaces = [];                                                     % For 3D modeling
-        basevertices = [];                                                  % For 3D modeling
+        base;                      	% Base pose
+        basecolors = [];          	% For 3D modeling        
+        basefaces = [];           	% For 3D modeling
+        basevertices = [];         	% For 3D modeling
         baseVelocity = zeros(3,1);  % This is used for mobile manipulators
-        C;                                                                  % Coriolis matrix
-        damping;                % Coefficient for Damped Least Squares
-        grav;                                                            	% Gravitational torque
-        hertz = 100;                                                        % Default control frequency
-        link;                                                               % Array of Link objects
-        M;                                                                  % Inertia matrix
-        manipulability = 1;     % Measure of manipulability
-        maxDamping = 0.2;       % Maximum damping to apply for Damped Least Squares
-        n;                                                                  % No. of joints
-        name = "robot";                                                               % Unique identifier
-        q;                                                                  % Joint positions
-        qdot;                                                               % Joint velocities
-        threshold = 0.1;       % Threshold value for activating Damped Least Squares
-        tool = Pose();          % Tool transform
+        C;                          % Coriolis matrix
+        damping;                    % Coefficient for Damped Least Squares
+        grav;                       % Gravitational torque
+        hertz = 100;                % Default control frequency
+        link;                       % Array of Link objects
+        M;                          % Inertia matrix
+        manipulability = 1;         % Measure of manipulability
+        maxDamping = 0.2;           % Maximum damping to apply for Damped Least Squares
+        n;                          % No. of joints
+        name = "robot";             % Unique identifier
+        q;                          % Joint positions
+        qdot;                       % Joint velocities
+        threshold = 0.1;            % Threshold value for activating Damped Least Squares
+        tool = Pose();              % Tool transform
     end
     
     properties (Access = private)
