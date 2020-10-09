@@ -54,23 +54,24 @@ classdef Link
     
     %%%%%%%%%  PROPERTIES %%%%%%%%%%
     properties (Access = public)
-        a = 1;                                                              % DH Parameter
-        alpha = 0;                                                          % DH Parameter
-        colors = [];                                                        % Used for 3D modeling
-        com = [-0.5;0;0];                                               	% Centre of mass in local link frame (m)
-        d = 0;                                                              % DH Parameter
-        faces = [];                                                         % Used for 3D modeling
+        a = 1;                                	% DH Parameter
+        alpha = 0;                            	% DH Parameter
+        colors = [];                          	% Used for 3D modeling
+        com = [-0.5;0;0];                      	% Centre of mass in local link frame (m)
+        d = 0;                                	% DH Parameter
+        damping = 0;                            % Joint damping coefficient
+        faces = [];                         	% Used for 3D modeling
         inertia = [0.10 0.00 0.00                                           
                    0.00 0.10 0.00
-                   0.00 0.00 0.10];                                      	% Inertia matrix in local frame (kg.m^2)
-        mass = 1;                                                          	% Mass of the link (kg)
-        qlim = [-2*pi 2*pi];                                                % Joint limits
-        theta = [];                                                         % DH Parameter
-        tlim = 20;                                                          % Torque limits
-        isrevolute = true;                                                  % revolute or prismatic
-        vertices = [];                                                      % Used for 3D modeling
-        vlim = 100*2*pi/60;                                                 % Velocity limits (in rad/s)
-        offset = 0;                                                         % Joint offset to account for DH parameters
+                   0.00 0.00 0.10];           	% Inertia matrix in local frame (kg.m^2)
+        mass = 1;                              	% Mass of the link (kg)
+        qlim = [-2*pi 2*pi];                	% Joint limits
+        theta = [];                            	% DH Parameter
+        tlim = 20;                            	% Torque limits
+        isrevolute = true;                     	% revolute or prismatic
+        vertices = [];                        	% Used for 3D modeling
+        vlim = 100*2*pi/60;                   	% Velocity limits (in rad/s)
+        offset = 0;                           	% Joint offset to account for DH parameters
     end
     
     %%%%%%%%%  METHODS %%%%%%%%%%
