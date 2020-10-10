@@ -20,6 +20,7 @@
 % The other properties, besides the DH parameters, are:
 % - colors:     Used for rendering a 3D model
 % - com:        The location of the centre of mass (m) from the origin
+% - damping:    Joint damping from viscous friction
 % - faces:      Used for rendering a 3D model
 % - inertia:    The 3x3 inertia tensor (kg-m^2)
 % - mass:       The mass of the link (kg)
@@ -91,6 +92,8 @@ classdef Link
                                     obj.alpha = varargin{i+1};
                                 case 'd'
                                     obj.d = varargin{i+1};
+                                case 'damping'
+                                    obj.damping = varargin{i+1};
                                 case 'theta'
                                     obj.theta = varargin{i+1};
                                 case 'offset'
