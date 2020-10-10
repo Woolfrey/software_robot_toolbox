@@ -38,6 +38,7 @@ classdef SerialLink < handle
         basevertices = [];         	% For 3D modeling
         baseVelocity = zeros(3,1);  % This is used for mobile manipulators
         C;                          % Coriolis matrix
+        D;                          % Joint torque damping matrix
         damping;                    % Coefficient for Damped Least Squares
         grav;                       % Gravitational torque
         hertz = 100;                % Default control frequency
@@ -74,12 +75,16 @@ classdef SerialLink < handle
         %%%%% Constructor %%%%%
         function obj = SerialLink(input)
             if nargin == 1
-                obj.link = input;                                           % Array of link objects                                       
-                obj.n = length(input);                                      % No. of joints
-                obj.q = zeros(obj.n,1);                                     % Vector of joint positions
-                obj.qdot = zeros(obj.n,1);                                  % Vector of joint velocities
-                baseTF = Pose();                                            % Create default pose object
-                obj.updateState(obj.q,obj.qdot,baseTF);                     % Fill in all initial values
+                obj.link = input;                           % Array of link objects                                       
+                obj.n = length(input);                    	% No. of joints
+                obj.q = zeros(obj.n,1);                   	% Vector of joint positions
+                obj.qdot = zeros(obj.n,1);                	% Vector of joint velocities
+                baseTF = Pose();                          	% Create default pose object
+                obj.updateState(obj.q,obj.qdot,baseTF); 	% Fill in all initial values
+                D = zeros(obj.n,obj.n);
+                for i = 1:obj.n
+                    D(i,i) = obj.link(i).damping;           % Fill in joint damping matrix
+                end
             else
                 error("Require an array of Link objects.")
             end
