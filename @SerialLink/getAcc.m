@@ -3,13 +3,14 @@
 %
 % This function computes the joint accelerations from a given joint torque:
 %
-% qddot = M^-1(tau - C*qdot - g),
+% qddot = M^-1(tau - C*qdot - D*qdot g),
 %
 % where:
 % - qddot (nx1) is a vector of joint accelerations,
 % - M  (nxn) is the inertia matrix,
 % - tau (nx1) is the input joint torque vector
 % - C (nxn) is the Coriolis matrix,
+% - D (nxn) is the damping matrix, and
 % - g (nx1) is the gravity torque vector.
 %
 % Inputs:
@@ -55,5 +56,5 @@ function ret = getAcc(obj,tau,qdot,q)
         error("Incorrect number of inputs.");
     end
     
-    ret = M\(tau - C*qdot - g);
+    ret = M\(tau - (C+obj.D)*qdot - g);
 end

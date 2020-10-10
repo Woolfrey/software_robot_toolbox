@@ -10,7 +10,7 @@
 %
 % The joint torques are given by:
 %
-% tau = M*acc + C*vel + g,
+% tau = M*acc + (C+D)*vel + g,
 %
 % where g is the gravitational torque vector. If the velocity and positions
 % are given, the dynamics equation will be computed accordingly. Otherwise,
@@ -59,7 +59,7 @@ function ret = invDynamics(obj,acc, vel, pos)
         error("Incorrect number of inputs. If only joint acceleration is given, this method will use the current joint state to compute the joint torques. Otherwise, acceleration, velocity, and position must be given.");
     end
     
-    tau = M*acc + C*vel + g;           
+    tau = M*acc + (C + obj.D)*vel + g;           
             
    % Saturate any joint torques over the limit
    for j = 1:obj.n
