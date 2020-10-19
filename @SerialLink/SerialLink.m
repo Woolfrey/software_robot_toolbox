@@ -38,6 +38,7 @@ classdef SerialLink < handle
         basevertices = [];         	% For 3D modeling
         baseVelocity = zeros(3,1);  % This is used for mobile manipulators
         C;                          % Coriolis matrix
+        com;                                                                % Centre of mass for each link
         D;                          % Joint torque damping matrix
         damping;                    % Coefficient for Damped Least Squares
         grav;                       % Gravitational torque
@@ -57,7 +58,6 @@ classdef SerialLink < handle
     properties (Access = private)
         a;                                                                  % Axis of rotation for each joint
         adot;                                                               % Time-derivative
-        com;                                                                % Centre of mass for each link
         fkchain;                                                            % Forward kinematic chain
         H;                                                                  % Inertia for each link
         Hdot;                                                               % Time-derivative of inertia for each link
@@ -224,9 +224,13 @@ classdef SerialLink < handle
             if nargin == 1                                                  % No inputs, use current state
                 FK = obj.fkchain;
             end
-            for i = 1:obj.n
-                ret(:,i) = FK(i).pos + FK(i).rot.rotate(obj.link(i).com);
+            ret(:,1) = obj.base.transform(obj.link(1).com);
+            for i = 2:obj.n
+                ret(:,i) = FK(i-1).transform(obj.link(i).com);
             end
+%             for i = 1:obj.n
+%                 ret(:,i) = FK(i).pos + FK(i).rot.rotate(obj.link(i).com);
+%             end
         end
         
       	% Compute Jacobian for the centre of mass for every link
@@ -318,11 +322,16 @@ classdef SerialLink < handle
                 [~,FK] = obj.fk(q);
                 w = zeros(3,obj.n);
             end
-            
-            for j = 1:obj.n
-                I(:,:,j) = FK(j).rot.rotate(obj.link(j).inertia);           % Rotate the inertia matrix to the origin frame
-                Idot(:,:,j) = skew(w(:,j))*I(:,:,j);                        % Compute the time-derivative
+            I(:,:,1) = obj.base.rot.rotate(obj.link(1).inertia);
+            Idot(:,:,1) = skew(w(:,1))*I(:,:,1);
+            for j = 2:obj.n
+                I(:,:,j) = FK(j-1).rot.rotate(obj.link(j).inertia);
+                Idot(:,:,j) = skew(w(:,j))*I(:,:,j);
             end
+%             for j = 1:obj.n
+%                 I(:,:,j) = FK(j).rot.rotate(obj.link(j).inertia);           % Rotate the inertia matrix to the origin frame
+%                 Idot(:,:,j) = skew(w(:,j))*I(:,:,j);                        % Compute the time-derivative
+%             end
         end  
     end
 end
