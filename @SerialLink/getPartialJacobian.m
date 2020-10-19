@@ -1,12 +1,19 @@
-%% SerialLink.getPartialJacobian
+%% SerialLink.getPartialJacobian(j,q,baseTF)
 % Jonathan Woolfrey
+% October 2020
 %
-% This function returns the tensor for the partial derivative of the
-% Jacobian with respect to each joint of the manipulator.
+% This function returns the partial derivative of the Jacobian matrix with
+% respect to a particular joint on the manipulator.
 %
-% Verify the result with the following: Jdot = (dJ/dq)*qdot
-
-
+% Inputs:
+% - j (1x1):                The number of the joint to take the derivative of
+% - q (nx1):                Optional joint configuration (default uses current manipulator state will be used)
+% - baseTF (Pose object):   Optional base transformation (default uses current base pose)
+%
+% Output:
+% - dJ/dq_j (6x7):          Exact numerical solution for the partial derivative of the Jacobian
+%
+% Verify the result with the following: Jdot = sum((dJ/dq_j)*qdot_j)
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -28,46 +35,41 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = getPartialJacobian(obj,q,baseTF)
-    ret = zeros(6,obj.n,obj.n);                                             % Pre-allocate memory
+function ret = getPartialJacobian(obj,j,q,baseTF)
+    ret = zeros(6,7);                   % Pre-allocate memory
 
-    if nargin == 1                                                          % Use current state
-        v = obj.a;                                                          % Axis of actuation for each joint
-        d = obj.r;                                                          % Distance from joint to end-effector
+    if nargin == 2                    	% Use current state
+        v = obj.a;                     	% Axis of actuation for each joint
+        d = obj.r;                    	% Distance from joint to end-effector
     else
-        if nargin == 2
-            baseTF = obj.base;
+        if nargin == 3
+            baseTF = obj.base;          % Use current base pose
         end
-        [~,FK] = obj.fk(q,baseTF);                                          % Compute forward kinematics
-        v = obj.getAxis(FK);                                                % Axis of actuation for each joint
-        d = obj.getDist(FK);                                                % Distance from joint to end-effector
+        [~,FK] = obj.fk(q,baseTF);      % Compute forward kinematics
+        v = obj.getAxis(FK);           	% Axis of actuation for each joint
+        d = obj.getDist(FK);           	% Distance from joint to end-effector
     end
 
     for i = 1:obj.n
-        for j = 1:obj.n
-
             if obj.link(j).isrevolute                                       % Revolute
                 if obj.link(i).isrevolute                                   % Also revolute
                     if j < i
-                        ret(:,i,j) = [cross(v(:,j),cross(v(:,i),d(:,i)))
+                        ret(:,i) = [cross(v(:,j),cross(v(:,i),d(:,i)))
                                            cross(v(:,j),v(:,i))];
                     elseif j == i
-                        ret(1:3,i,j) = cross(v(:,j),cross(v(:,i),d(:,i)));
+                        ret(1:3,i) = cross(v(:,j),cross(v(:,i),d(:,i)));
                     else
-                        ret(1:3,i,j) = cross(v(:,i),cross(v(:,j),d(:,j)));
+                        ret(1:3,i) = cross(v(:,i),cross(v(:,j),d(:,j)));
                     end
                 elseif ~obj.link(j).isrevolute                              % Prismatic joint
                     if j < i
-                        ret(1:3,i,j) = cross(v(:,j),v(:,i));
+                        ret(1:3,i) = cross(v(:,j),v(:,i));
                     end
                 end
-            elseif ~obj.link(j).isrevolute                                  % Prismatic
-                if obj.link(i).isrevolute
-                    if j > i
-                        ret(1:3,i,j) = cross(v(:,i),v(:,j));
-                    end
+            else % Prismatic
+                if obj.link(i).isrevolute && j > i
+                        ret(1:3,i) = cross(v(:,i),v(:,j));
                 end
             end
-        end
     end
 end
