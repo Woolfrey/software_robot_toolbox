@@ -41,20 +41,17 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = getAcc(obj,tau,qdot,q)
-    
-    if nargin == 2
+function ret = getAcc(obj,tau,disturbance)
+ 
+        if nargin < 3
+            disturbance = zeros(obj.n,1);
+        end
+        
         qdot = obj.qdot;
         M = obj.M;
         C = obj.C;
         g = obj.grav;
-    elseif nargin == 4
-        M = obj.getInertia(q);
-        C = obj.getCoriolis(q,qdot);
-        g = obj.getGrav(q);
-    else
-        error("Incorrect number of inputs.");
-    end
+
     
-    ret = M\(tau - (C+obj.D)*qdot - g);
+	ret = M\(tau - (C+obj.D)*qdot - g - disturbance);
 end
