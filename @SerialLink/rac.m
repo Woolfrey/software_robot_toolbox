@@ -2,18 +2,18 @@
 % Jonathan Woolfrey
 %
 % Resolved acceleration control. This function computes the joint
-% accelerations needed to move the end-effector at a desired acceleration.
+% torques needed to move the end-effector at a desired acceleration.
 %
 % Inputs:
-% - acc             Desired end-effector acceleration (6x1)
-% - vel             Desired end-effector velocity (6x1)
-% - Kd              Gain on the velocity error (1x1)
-% - pos             Desired end-effector position (Pose object)
-% - Kp              Gain on the end-effector position (1x1)
-% - redundant       Joint accelerations relating to a redundant task (nx1)
+% - acc (6x1)           Desired end-effector acceleration
+% - vel (6x1)           Desired end-effector velocity
+% - Kd (1x1)            Gain on the velocity error
+% - pos (Pose object)   Desired end-effector position
+% - Kp (1x1)        	Gain on the end-effector pose error
+% - redundant (nx1)     Joint accelerations relating to a redundant task
 %
 % Output:
-% - Joint accelerations (nx1)
+% - Joint torques (nx1)
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -37,32 +37,30 @@
 
 function ret = rac(obj, acc, vel, Kd, pos, Kp, redundant)
 
-	J = obj.getJacobian();
-    Jdot = obj.getJdot();
+	J = obj.getJacobian();                                      % Manipulator Jacobian
+    Jdot = obj.getJdot();                                       % Time-derivative of Jacobian
     
     if nargin == 2
-        xddot = acc;                                % Only acceleration defined
+        xddot = acc;                                            % Only acceleration defined
     elseif nargin == 3
-        edot = vel - J*obj.qdot;                    % Velocity tracking error
-        xddot = acc + Kd*edot;                      % Proportional feedback
+        edot = vel - J*obj.qdot;                                % Velocity tracking error
+        xddot = acc + Kd*edot;                                  % Proportional feedback
     elseif nargin > 3
-        e = obj.tool.error(pos);                    % Position tracking error
-        edot = vel - J*obj.qdot;                    % Velocity tracking error
-        xddot = acc + Kp*e + Kd*edot;
+        e = obj.tool.error(pos);                                % Position tracking error
+        edot = vel - J*obj.qdot;                                % Velocity tracking error
+        xddot = acc + Kp*e + Kd*edot;                           % End-effector acceleration
     end
-        if obj.n > 6                                % Kinematically redundant
-        W = obj.M;                              
-        invJ = obj.dls(J,W,"verbose");              % Use inertia weighting
+        if obj.n > 6                                            % Kinematically redundant
+        invJ = obj.dls(J,obj.M,"verbose");                  	% Use inertia weighting
         if nargin < 5                               
-            qddot = invJ*(xddot - Jdot*obj.qdot);   % No null space control
+            qddot = invJ*(xddot - Jdot*obj.qdot);               % No null space control
         else
-            N = eye(obj.n) - invJ*J;                % Null space projection matrix
+            N = eye(obj.n) - invJ*J;                            % Null space projection matrix
             qddot = invJ*(xddot - Jdot*obj.qdot) + N*redundant; % Null space accelerations defined
         end
     else
         invJ = obj.dls(J,eye(obj.n),"verbose");
         qddot = invJ*(xddot - Jdot*obj.qdot);
     end
-    
-    ret = qddot;      
+    ret = obj.invDynamics(qddot);                               % Return joint torques    
 end
