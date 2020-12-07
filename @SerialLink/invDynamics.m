@@ -58,7 +58,6 @@ function ret = invDynamics(obj,acc, vel, pos)
     else
         error("Incorrect number of inputs. If only joint acceleration is given, this method will use the current joint state to compute the joint torques. Otherwise, acceleration, velocity, and position must be given.");
     end
-    
     tau = M*acc + (C + obj.D)*vel + g;           
             
    % Saturate any joint torques over the limit
