@@ -76,17 +76,25 @@ classdef Cartesian < handle
             elseif length(pose) > 2
                 if strcmp(type,"cspline")
                     temp = nan(3,length(pose));             % Temporary array of points
-                    for i = 1:length(pose)
+                    
+                    for i = 1:length(pose)                  % No. of poses to interpolate across
                         temp(:,i) = pose(i).pos;            % Add ith point to array
                     end
-                    obj.position = CSpline(time,temp);      % Create cubic spline trajectory of points
-                    temp = nan(4,length(pose));             % Temporary array of angle-axis
-                    for i = 1:length(pose)
-                        temp(1,i) = pose(i).rot.angle(); 	% Add ith angle to array
-                        temp(2:4,i) = pose(i).rot.axis();   % Add the ith axis to array
+                    obj.position = CSpline(time,temp);          % Create cubic spline trajectory of points
+
+                    for i = 1:length(pose)-1                    % No. of splines = no. of poses - 1
+                        dQ = pose(i).rot.inverse*pose(i+1).rot; % Get the quaternion difference
+                        temp(:,i) = dQ.angle*dQ.axis;
                     end
-                    obj.orientation = CSpline(time,temp);	% Create cubic spline of angle-axis
+                    temp(:,end) = temp(:,end-1);                % Arbitrary???
+                    obj.orientation = CSpline(time,temp,'quaternion');  % Create cubic spline with quaternion option
                     obj.type = 3;
+%                     for i = 1:length(pose)
+%                         temp(1,i) = pose(i).rot.angle(); 	% Add ith angle to array
+%                         temp(2:4,i) = pose(i).rot.axis();   % Add the ith axis to array
+%                     end
+%                     obj.orientation = CSpline(time,temp);	% Create cubic spline of angle-axis
+%                     obj.type = 3;
                 else
                     error("Trajectory type must be 'cspline' for more than 2 poses.");
                 end
@@ -103,13 +111,38 @@ classdef Cartesian < handle
                 vel = [pdot;qdot];                          % Combined velocity vector
                 acc = [pddot;qddot];                        % Combined acceleration vector
             elseif obj.type == 3                            % Cubic Spline
-                [p,pdot,pddot] = obj.position.getState(t);  % Interpolate position
-                [q,qdot,qddot] = obj.orientation.getState(t); % Interpolate orientation as angle-axis
-
-                axis = q(2:4)/norm(q(2:4));                 % Normalize the axis vector
-                pos = Pose(p,Rotation('angleAxis',q(1),axis));  % Create Pose object
-                vel = [pdot; qdot(2:4)];                    % Note that qdot(1) is the norm of the angular velocity vector
-                acc = [pddot; qddot(2:4)];                  % Note that qddot(1) is the norm of the angular velocity vecor
+                [p,v,a] = obj.position.getState(t);         % Interpolate position
+                [x, omega, alpha] = obj.orientation.getState(t); % Interpolate orientation
+                angle = norm(x);                            % Angle of rotation is equal to magnitude
+                if angle < 1E-3
+                    axis = [1;0;0];                         % Axis of rotation is arbitrary
+                else
+                    axis = x/angle;                       	% Axis of rotation is unit vector
+                end
+                dR = Rotation('angleAxis',angle,axis);      % Intermediary rotation
+                
+                if t >= obj.time(end)                       % Trajectory finished
+                    R = obj.pose(end).rot;                  % Maintain final orientation
+                elseif t <= obj.time(1)                     % Trajectory not yet started
+                    R = obj.pose(1).rot;                    % Stay at first orientation      
+                else                            
+                    for i = 1:length(obj.time)              % Identify which spline we are currently at
+                        j = length(obj.time) - i;           % Count backwards
+                        if t > obj.time(j)                  % Must be at the jth spline
+                            break
+                        end
+                    end
+                    R = obj.pose(j).rot*dR;                 % Increment rotation from the start of the jth spline                
+                end
+                pos = Pose(p,R);                            % Desired pose at current time
+                vel = [v;omega];                            % Desired velocity
+                acc = [a;alpha];                            % Desired acceleration
+                
+%                 [q,qdot,qddot] = obj.orientation.getState(t); % Interpolate orientation as angle-axis
+%                 axis = q(2:4)/norm(q(2:4));                 % Normalize the axis vector
+%                 pos = Pose(p,Rotation('angleAxis',q(1),axis));  % Create Pose object
+%                 vel = [pdot; qdot(2:4)];                    % Note that qdot(1) is the norm of the angular velocity vector
+%                 acc = [pddot; qddot(2:4)];                  % Note that qddot(1) is the norm of the angular velocity vecor
             else
                 error("Trajectory type not specified correctly.");
             end
