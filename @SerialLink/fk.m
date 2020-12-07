@@ -39,16 +39,22 @@
 % jonathan.woolfrey@gmail.com
 
 function [FK, ALL] = fk(obj,q,baseTF)
-
-    if nargin == 2                                                      % Joint state, but no base pose
-        baseTF = obj.base;
+    
+    switch nargin
+        case 1
+            q = obj.q;
+            baseTF = obj.base;
+        case 2
+            baseTF = obj.base;
+        case 3
+            % No need to do anything
     end
     
-    ALL(obj.n,1) = Pose();                                               % Create array of poses
-	ALL(1) = baseTF*obj.link(1).getPose(q(1));                              % Multiply first link pose by base
+    ALL(obj.n,1) = Pose();                              	% Create array of poses
+	ALL(1) = baseTF*obj.link(1).getPose(q(1));            	% Multiply first link pose by base
     for i = 2:obj.n
-        ALL(i) = ALL(i-1)*obj.link(i).getPose(q(i));                        % Compute FK chain
+        ALL(i) = ALL(i-1)*obj.link(i).getPose(q(i));      	% Compute FK chain
     end
 
-    FK = ALL(obj.n);    % End-effector pose is last in chain
+    FK = ALL(obj.n);                                        % End-effector pose is last in chain
 end
