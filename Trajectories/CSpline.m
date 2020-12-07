@@ -5,11 +5,12 @@
 % Cubic spline trajectory, used for interpolating between 3 or more points
 % in n-dimensional space. Creating an instance of this class requires:
 %
-% trajectory = Cspline(t,p)
+% trajectory = Cspline(t,p, "quaternion")
 %
 % where:
-% - t           An array of times to pass each waypoint (1x3 minimum)
-% - p           An array of waypoints (nx3 minimum)
+% - t               An array of times to pass each waypoint (1x3 minimum)
+% - p               `An array of waypoints (nx3 minimum)
+% - "quaternion"    Optional input when interpolating orientation
 %
 % To get the desired state at the current time:
 %
@@ -41,19 +42,29 @@
 classdef CSpline < handle
     
     properties (Access = public)
-        point;                                                              % m x n array of n points
-        time;                                                               % 1 x n vector of time for each point
+        point;                      % m x n array of n points
+        time;                       % 1 x n vector of time for each point
     end
     
     properties (Access = private)
-        a,b,c,d;                                                            % Spline coefficients
-        m;                                                                  % Dimensions
-        n;                                                                  % No. of points
+        a,b,c,d;                	% Spline coefficients
+        m;                          % Dimensions
+        n;                          % No. of points
+        quaternion = 0;             % 0 = Euclidean space, 1 = Quaternion space
     end
     
     methods (Access = public)
         %%%%% Constructor %%%%%
-        function obj = CSpline(t,p)
+        function obj = CSpline(t,p,option)
+            
+            if nargin == 3 
+                if strcmp(option,"quaternion")
+                    obj.quaternion = 1;
+                else
+                    error("Incorrect optional input. Use 'quaternion' or leave empty.");
+                end
+            end
+            
             if size(t,2) ~= size(p,2)
                 error("Inputs are not of equal length. Expected a 1xn time vector, and mxn array for n points.")
             elseif size(t,2) < 3
@@ -73,26 +84,41 @@ classdef CSpline < handle
                 A = zeros(n,n);
                 B = zeros(n,n);
                 
-                dt = t(2) - t(1);
-                A(1,1) = (dt^2)/3;
-                A(1,2) = (dt^2)/6;
-                B(1,1) = -1;
-                B(1,2) = 1;
-                dt = t(n) - t(n-1);
-                A(n,n-1) = -dt^2/6;
-                A(n,n) = -dt^2/3;
-                B(n,n-1) = -1;
-                B(n,n) = 1;
+                if ~obj.quaternion
+                    A(1,1)   = (t(2)-t(1))/2;
+                    A(1,2)   = (t(2)-t(1))/2 + (t(3)-t(2))/3;
+                    A(1,3)   = (t(3)-t(2))/6;
+                else
+                    A(1,1) = (t(2) - t(1))/3;
+                    A(1,2) = (t(2) - t(1))/6;
+                end
+                A(n,n-1) = (t(n)-t(n-1))/6;
+                A(n,n)   = (t(n)-t(n-1))/3;            
+                
+                if ~obj.quaternion
+                        B(1,2)   = -1/(t(3)-t(2));
+                        B(1,3)   =  1/(t(3)-t(2));
+                        B(n,n-1) =  1/(t(n)-t(n-1));
+                        B(n,n)   = -1/(t(n)-t(n-1));
+                else 
+                        B(1,1)   =  1/(t(2)-t(1));
+                        B(n,n-1) = -1/(t(n)-t(n-1));
+                end
 
                 for i = 2:n-1
                     dt1 = t(i) - t(i-1);
                     dt2 = t(i+1) - t(i);
                     A(i,i-1) = dt1/6;
-                    A(i,i) = (dt1 + dt2)/3;
+                    A(i,i)   = (dt1 + dt2)/3;
                     A(i,i+1) = dt2/6;
-                    B(i,i-1) = 1/dt1;
-                    B(i,i) = -1/dt1 - 1/dt2;
-                    B(i,i+1) = 1/dt2;
+                    if ~obj.quaternion
+                        B(i,i-1) = 1/dt1;
+                        B(i,i)   = -1/dt1 - 1/dt2;
+                        B(i,i+1) = 1/dt2;
+                    else
+                        B(i,i-1) = -1/dt1;
+                        B(i,i)   = 1/dt2;
+                    end
                 end
                 
                 C = A\B;
@@ -102,22 +128,30 @@ classdef CSpline < handle
                 obj.b = obj.a;
                 obj.c = obj.b;
                 obj.d = obj.c;
-                
                 for i = 1:obj.m
                     s = p(i,:)';
                     sdd = C*s;
                     for j = 1:n-1
                         dt = t(j+1) - t(j);
-                        obj.a(i,j) = s(j);
                         obj.c(i,j) = 0.5*sdd(j);
                         obj.d(i,j) = (sdd(j+1) - sdd(j))/(6*dt);
                         
+                        if ~obj.quaternion
+                            obj.a(i,j) = s(j);          % Initial position
+                        else
+                            obj.a(i,j) = 0;             % Initial rotation of zero
+                        end
+                        
                         if j == 1
-                            obj.b(i,1) = 0;
+                            obj.b(i,1) = 0;             % Initial velocity of zero
                         elseif j == n-1
                             obj.b(i,n-1) = -0.5*dt*(sdd(j+1) + sdd(j));
                         else
-                            ds = s(j+1)-s(j);
+                            if ~obj.quaternion
+                                ds = s(j+1)-s(j);       % Difference between start and end of spline
+                            else
+                                ds = s(j);              % Start of spline is "zero", so end of spline is just the full rotation
+                            end
                             obj.b(i,j) = ds/dt - dt*(sdd(j+1) + 2*sdd(j))/6;
                         end
                     end
@@ -135,12 +169,12 @@ classdef CSpline < handle
                     pos = obj.point(:,1);
                 else
                     for k = 1:obj.n-1
-                        j = obj.n - k;                                      % Count backwards
+                        j = obj.n - k;              % Count backwards
                         if t > obj.time(j)
-                            break                                           % Break at the jth spline
+                            break                   % Break at the jth spline
                         end
                     end
-                    dt = t - obj.time(j);                                   % Time since start of jth spline
+                    dt = t - obj.time(j);          	% Time since start of jth spline
                     for i = 1:obj.m
                         pos(i,1) = obj.a(i,j) + obj.b(i,j)*dt +   obj.c(i,j)*dt^2 +   obj.d(i,j)*dt^3;
                         vel(i,1) =              obj.b(i,j)    + 2*obj.c(i,j)*dt   + 3*obj.d(i,j)*dt^2;
