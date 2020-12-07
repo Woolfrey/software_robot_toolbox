@@ -1,10 +1,9 @@
-%% Resolved Motion Rate Control
+%% Resolved Acceleration Control
 % Jonathan Woolfrey
 %
 % Get a model of the Sawyer robot to track a Cartesian trajectory between 2
 % poses. This method solves the end-effector control at the acceleration
 % level, which naturally folds in to the dynamic-level control.
-
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -61,30 +60,29 @@ disp('Proceed?')
 pause;
 
 %% Set Up Arrays
-q = q0;                                                                     % Joint positions
-qdot = zeros(7,1);                                                          % Joint velocities
-qddot = zeros(7,1);                                                         % Joint accelerations
+q = q0;                                                   	% Joint positions
+qdot = zeros(7,1);                                        	% Joint velocities
+qddot = zeros(7,1);                                        	% Joint accelerations
 qdr = zeros(7,1);
-jointState = nan(7,steps,3);                                                % For plotting data
-trackingError = nan(2,steps);                                               % For plotting
-m = nan(steps,1);                                                           % Manipulability
+jointState = nan(7,steps,3);                               	% For plotting data
+trackingError = nan(2,steps);                            	% For plotting
+m = nan(steps,1);                                         	% Manipulability
 %% Run Simulation
 
-tic;                                                                        % Start timer                                                           
+tic;                                                    	% Start timer                                                           
 for i = 1:steps
     % Update the current system state
-    q = q + dt*qdot + 0.5*dt*dt*qddot;                                      % Update joint positions
-    qdot = qdot + dt*qddot;                                                 % Update joint velocities
-    robot.updateState(q,qdot);                                              % Update the robot state    
-    t = (i-1)*dt;                                                           % Current simulation time
+    q = q + dt*qdot + 0.5*dt*dt*qddot;                     	% Update joint positions
+    qdot = qdot + dt*qddot;                             	% Update joint velocities
+    robot.updateState(q,qdot);                            	% Update the robot state    
+    t = (i-1)*dt;                                          	% Current simulation time
     
     % Get require end-effector trajectory at current time
     [pos,vel,acc] = trajectory.getState(t);
     
     % Compute joint control
     qddr = zeros(robot.n,1);                                % No redundant accelerations
-    qdd = robot.rac(acc, vel, Kd, pos, Kp, qddr);           % Compute joint accelerations
-    tau = robot.invDynamics(qdd);                           % Compute joint torques
+    tau = robot.rac(acc, vel, Kd, pos, Kp, qddr);           % Compute joint accelerations
     qddot = robot.getAcc(tau);                              % This is only needed for simulation
     
     if animate && mod(i,25) == 0

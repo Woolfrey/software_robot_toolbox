@@ -33,7 +33,7 @@ clc
 load sawyer.mat;                                                            % Load the Sawyer model
 
 %% General Simulation Parameters
-animate = 1;                        % Turn animation on or off                                                             
+animate = 0;                        % Turn animation on or off                                                             
 dt = 1/100;                         % Discrete time step, for simulation purposes
 Kp = 80;                            % Proportional gain
 Kd = ceil(2*sqrt(Kp));          	% Derivative gain
@@ -82,9 +82,7 @@ for i = 1:steps
     
     % Compute joint control
     qdr = robot.maxManipulability(2);   % Redundant task
-	qd = robot.rmrc(vel,pos,Kp,qdr);    % Joint velocity control
-	qdd = 90*(qd - qdot);               % Joint acceleration control
-    tau = robot.invDynamics(qdd);       % Torque control
+	tau = robot.rmrc(vel,pos,Kp,qdr);  	% Joint velocity control
     qddot = robot.getAcc(tau);          % This is only needed for simulation
 
     if animate && mod(i,25) == 0
