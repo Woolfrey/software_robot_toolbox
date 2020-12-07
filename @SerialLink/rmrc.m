@@ -1,17 +1,17 @@
 %% SerialLink.rmrc()
 % Jonathan Woolfrey
 %
-% Resolved motion rate control. This function computes the joint velocities
-% needed to move the end-effector at a desired speed.
+% Resolved motion rate control. This function computes the joint torques
+% needed to move the end-effector at a desired velocity.
 %
 % Inputs:
-% - vel             Desired end-effector velocity (6x1)
-% - pos             Desired end-effector position (Pose object)
-% - Kp              Gain on the end-effector position (1x1)
-% - redundant       Joint accelerations relating to a redundant task (nx1)
+% - vel (6x1)           Desired end-effector velocity
+% - pos (Pose object)   Desired end-effector position
+% - Kp (1x1)            Gain on the end-effector position
+% - redundant (nx1)     Joint velocities relating to a redundant task
 %
 % Output:
-% - Joint velocities (nx1)
+% - Joint torques (nx1)
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -59,6 +59,6 @@ function ret = rmrc(obj,vel,pose,Kp,redundant)
     
     qdot = obj.saturateVelocities(qdot);                    % Slow any joints that will hit a limit
     
-    ret = qdot;
+    ret = obj.invDynamics(0.95*obj.hertz*(qdot - obj.qdot));    % Return joint torques
     
 end
