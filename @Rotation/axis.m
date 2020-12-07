@@ -41,11 +41,13 @@
 % jonathan.woolfrey@gmail.com
 
 function ret = axis(obj)
-    angle = obj.angle();                                                    % Get the angle of rotation from this quaternion
-    if angle < 1E-3 || pi - angle < 1E-3 || 2*pi - angle < 1E-3             % Check the magnitude of the angle
-        ret = zeros(3,1);                                                   % Arbitrary
-    else
-        axis = obj.quat(2:4)/sin(0.5*angle);                                % Compute the axis of rotation
-        ret = axis/norm(axis);                                              % Normalize
-    end
+      theta = acos(obj.quat(1));            % Get the first parameter
+      
+      if sin(theta) < 1E-3                  % If close to zero
+          axis = [1;0;0];                   % Axis is arbitrary - use vector component
+      else
+          axis = obj.quat(2:4)/sin(theta);  % Proper computation
+      end
+      
+      ret = axis/norm(axis);                % Normalize for good measure
 end
