@@ -38,7 +38,6 @@ classdef SerialLink < handle
         basevertices = [];         	% For 3D modeling
         baseVelocity = zeros(3,1);  % This is used for mobile manipulators
         C;                          % Coriolis matrix
-        com;                                                                % Centre of mass for each link
         D;                          % Joint torque damping matrix
         damping;                    % Coefficient for Damped Least Squares
         grav;                       % Gravitational torque
@@ -49,6 +48,7 @@ classdef SerialLink < handle
         maxDamping = 0.2;           % Maximum damping to apply for Damped Least Squares
         n;                          % No. of joints
         name = "robot";             % Unique identifier
+        payload = Payload();        % Payload object
         q;                          % Joint positions
         qdot;                       % Joint velocities
         threshold = 0.1;            % Threshold value for activating Damped Least Squares
@@ -56,17 +56,18 @@ classdef SerialLink < handle
     end
     
     properties (Access = private)
-        a;                                                                  % Axis of rotation for each joint
-        adot;                                                               % Time-derivative
-        fkchain;                                                            % Forward kinematic chain
-        H;                                                                  % Inertia for each link
-        Hdot;                                                               % Time-derivative of inertia for each link
-        invJ;                                                               % Weighted pseudoinverse Jacobian
-        Jm;                                                                 % Jacobian to c.o.m. for each link
-        Jmdot;                                                              % Time-derivative
-        omega;                                                              % Cumulative angular velocity
-        r;                                                                  % Distance to end-effector
-        rdot;                                                               % Time-derivative
+        a;                          % Axis of rotation for each joint
+        adot;                     	% Time-derivative
+        com;                        % Centre of mass for each link
+        fkchain;                	% Forward kinematic chain
+        H;                        	% Inertia for each link
+        Hdot;                    	% Time-derivative of inertia for each link
+        invJ;                       % Weighted pseudoinverse Jacobian
+        Jm;                         % Jacobian to c.o.m. for each link
+        Jmdot;                     	% Time-derivative
+        omega;                    	% Cumulative angular velocity
+        r;                         	% Distance to end-effector
+        rdot;                      	% Time-derivative
     end
     
     %%%%%%%%%% METHODS %%%%%%%%%%
@@ -109,29 +110,34 @@ classdef SerialLink < handle
             obj.q = q;                                                      % Assign joint positions
             obj.qdot = qdot;                                                % Assign joint velocities
             [obj.tool, obj.fkchain] = obj.fk(obj.q,obj.base);
-            obj.a = obj.getAxis();                                          % Relies on FK
-            obj.r = obj.getDist();                                          % Relies on FK
-            obj.omega = obj.getOmega();                                     % Relies on qdot, a
-            obj.adot = obj.getAxisDot();                                    % Relies on omega, a
-            obj.rdot = obj.getDistDot();                                    % Relies on omega, r, qdot, a
+            obj.a = obj.getAxis();                      % Relies on FK
+            obj.r = obj.getDist();                    	% Relies on FK
+            obj.omega = obj.getOmega();               	% Relies on qdot, a
+            obj.adot = obj.getAxisDot();              	% Relies on omega, a
+            obj.rdot = obj.getDistDot();            	% Relies on omega, r, qdot, a
             
             % Update Dynamics
-            obj.com = obj.getCOM();                                         % Relies on FK
-            [obj.H, obj.Hdot] = obj.getLinkInertia();                       % Relies on FK, omega
-            obj.Jm = obj.getMassJacobian();                                 % Relies on FK, c.o.m.
-            obj.M = obj.getInertia();                                       % Relies on Jm, H
-            obj.grav = obj.getGrav();                                       % Relies on Jm
-            obj.Jmdot = obj.getMassJdot();                                  % Relies on ???
-            obj.C = obj.getCoriolis();                                      % Relies on Jm, Jmdot, omega
+            obj.com = obj.getCOM();                   	% Relies on FK
+            [obj.H, obj.Hdot] = obj.getLinkInertia(); 	% Relies on FK, omega
+            obj.Jm = obj.getMassJacobian();            	% Relies on FK, c.o.m.
+            obj.M = obj.getInertia();                  	% Relies on Jm, H
+            obj.grav = obj.getGrav();                 	% Relies on Jm
+            obj.Jmdot = obj.getMassJdot();            	% Relies on ???
+            obj.C = obj.getCoriolis();                 	% Relies on Jm, Jmdot, omega
+            if obj.payload.exists
+                obj.payload.updateState(obj.a,obj.adot,obj.omega,obj.fkchain);
+                obj.M = obj.M + obj.payload.getInertia();
+                obj.C = obj.C + obj.payload.getCoriolis();
+                obj.grav = obj.grav + obj.payload.getGrav();
+            end
         end
         
         % Forward Declarations
-        ret = constrainJointMotion(obj,jointMotion,eeMotion,J,damping,upper,lower)
-        ret = dls(obj,J,W,verbose);                         % Damped Least Squares inverse
-        ret = getAcc(obj,tau,q,qdot);                       % Convert torque to acceleration
-        ret = pdPlus(obj,pos,Kp,vel,Kd);                    % PD plus joint control
-        vellipse(obj,q);                                    % Velocity ellipsoid
-        fellipse(obj,q);                                    % Force ellipsoid
+        ret = dls(obj,J,W,verbose);                     % Damped Least Squares inverse
+        ret = getAcc(obj,tau,disturbance);           	% Convert torque to acceleration
+        ret = pdPlus(obj,pos,Kp,vel,Kd);             	% PD plus joint control
+        vellipse(obj,q);                              	% Velocity ellipsoid
+        fellipse(obj,q);                              	% Force ellipsoid
     end
     
     methods (Access = private)
