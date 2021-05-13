@@ -38,16 +38,15 @@ load sawyer.mat;
 %%
 robot.hertz = 100;                          % Control frequenc for the robot
 dt = 1/robot.hertz;                         % Time-step
-T = 60;                                     % Total time to run simulation
+T = 5;                                     % Total time to run simulation
 steps = T/dt;                               % No. of steps to loop through
-
-q = randn(7,1);                             % Randomize the initial joint configuration
+q = zeros(7,1);                             % Randomize the initial joint configuration
 qdot = zeros(7,1);                          % Start at zero velocity
 qddot = zeros(7,1);                         % Start at zero acceleration
 
 jointState = nan(7,steps,3);                % Array for saving data
 
-robot.base = Pose([0;0;0.5],Rotation('rpy',[0,pi/2,0])); % Set the base pose for the robot
+% robot.base = Pose([0;0;0.5],Rotation('rpy',[0,pi/2,0])); % Set the base pose for the robot
 
 for i = 1:steps
     q = q + dt*qdot + 0.5*dt*dt*qddot;      % Update joint position
@@ -56,7 +55,7 @@ for i = 1:steps
     robot.updateState(q,qdot);              % New robot state
     qddot = robot.getAcc(zeros(7,1));       % Figure out the joint accelerations
     
-    if mod(i,100) == 0                      % Plot the robot at every 100th step
+    if mod(i,20) == 0                      % Plot the robot at every 100th step
         robot.plot3D;
     end
     
