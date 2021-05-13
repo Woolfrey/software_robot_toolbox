@@ -7,6 +7,10 @@
 % Link objects as an input:
 %
 % robot = SerialLink([Link1 Link2 Link3 ... Linkn ])
+%
+% TO DO:
+%   - Need to update dynamics to account for prismatic joints
+%   - Need fix forward kinematics to account for tool offset
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -39,12 +43,10 @@ classdef SerialLink < handle
         baseVelocity = zeros(3,1);  % This is used for mobile manipulators
         C;                          % Coriolis matrix
         D;                          % Joint torque damping matrix
-        damping;                    % Coefficient for Damped Least Squares
         grav;                       % Gravitational torque
         hertz = 100;                % Default control frequency
         link;                       % Array of Link objects
         M;                          % Inertia matrix
-        manipulability = 1;         % Measure of manipulability
         maxDamping = 0.2;           % Maximum damping to apply for Damped Least Squares
         n;                          % No. of joints
         name = "robot";             % Unique identifier
@@ -54,7 +56,7 @@ classdef SerialLink < handle
         threshold = 0.1;            % Threshold value for activating Damped Least Squares
         tool = Pose();              % Tool transform
     end
-    
+     
     properties (Access = private)
         a;                          % Axis of rotation for each joint
         adot;                     	% Time-derivative
@@ -62,7 +64,6 @@ classdef SerialLink < handle
         fkchain;                	% Forward kinematic chain
         H;                        	% Inertia for each link
         Hdot;                    	% Time-derivative of inertia for each link
-        invJ;                       % Weighted pseudoinverse Jacobian
         Jm;                         % Jacobian to c.o.m. for each link
         Jmdot;                     	% Time-derivative
         omega;                    	% Cumulative angular velocity
@@ -82,7 +83,7 @@ classdef SerialLink < handle
                 obj.qdot = zeros(obj.n,1);                	% Vector of joint velocities
                 baseTF = Pose();                          	% Create default pose object
                 obj.updateState(obj.q,obj.qdot,baseTF); 	% Fill in all initial values
-                D = zeros(obj.n,obj.n);
+                D = zeros(obj.n,obj.n);                     % Pre-allocate memory for damping matrix
                 for i = 1:obj.n
                     D(i,i) = obj.link(i).damping;           % Fill in joint damping matrix
                 end
@@ -107,8 +108,8 @@ classdef SerialLink < handle
             end
             
             % Update Kinematics
-            obj.q = q;                                                      % Assign joint positions
-            obj.qdot = qdot;                                                % Assign joint velocities
+            obj.q = q;                              	% Assign joint positions
+            obj.qdot = qdot;                        	% Assign joint velocities
             [obj.tool, obj.fkchain] = obj.fk(obj.q,obj.base);
             obj.a = obj.getAxis();                      % Relies on FK
             obj.r = obj.getDist();                    	% Relies on FK
@@ -135,7 +136,6 @@ classdef SerialLink < handle
         % Forward Declarations
         ret = dls(obj,J,W,verbose);                     % Damped Least Squares inverse
         ret = getAcc(obj,tau,disturbance);           	% Convert torque to acceleration
-        ret = pdPlus(obj,pos,Kp,vel,Kd);             	% PD plus joint control
         vellipse(obj,q);                              	% Velocity ellipsoid
         fellipse(obj,q);                              	% Force ellipsoid
     end
@@ -144,25 +144,25 @@ classdef SerialLink < handle
         
         % Get axis of actuation for each joint in the origin frame
         function ret = getAxis(obj,FK,baseTF)
-            ret = zeros(3,obj.n);                                           % Pre-allocate memory
-            if nargin == 1                                                  % No inputs, use current state
+            ret = zeros(3,obj.n);                           % Pre-allocate memory
+            if nargin == 1                              	% No inputs, use current state
                 FK = obj.fkchain;
                 baseTF = obj.base;
             elseif nargin == 2
                 baseTF = obj.base;
             end
-            temp = baseTF.rot.matrix;                                       % Get rotation matrix of base
-            ret(:,1) = temp(1:3,3);                                         % First joint aligned with z-axis of base
+            temp = baseTF.rot.matrix;                    	% Get rotation matrix of base
+            ret(:,1) = temp(1:3,3);                        	% First joint aligned with z-axis of base
             for i = 2:obj.n
-                temp = FK(i-1).rot.matrix;                                  % Get the rotation matrix of preceding link
-                ret(:,i) = temp(1:3,3);                                     % Joint i aligned with z axis of link i-1
+                temp = FK(i-1).rot.matrix;                 	% Get the rotation matrix of preceding link
+                ret(:,i) = temp(1:3,3);                   	% Joint i aligned with z axis of link i-1
             end
         end
         
         % Get the time-derivative for each axis of actuation
         function ret = getAxisDot(obj,axis,omega)
-            ret = zeros(3,obj.n);                                           % Pre-allocate memory
-            if nargin == 1                                                  % No inputs, use current state
+            ret = zeros(3,obj.n);                          	% Pre-allocate memory
+            if nargin == 1                                  % No inputs, use current state
                 axis = obj.a;
                 omega = obj.omega;
             end
@@ -173,13 +173,13 @@ classdef SerialLink < handle
                 
         % Get the distance from each joint to the end-effector
         function ret = getDist(obj,FK)
-            ret = zeros(3,obj.n);                                           % Pre-allocate memory
-            if nargin == 1                                                  % No inputs, use current state
+            ret = zeros(3,obj.n);                           % Pre-allocate memory
+            if nargin == 1                                	% No inputs, use current state
                 FK = obj.fkchain;
             end
-            ret(:,1) = FK(obj.n).pos;                                       % First link
+            ret(:,1) = FK(obj.n).pos;                     	% First link
             for i = 2:obj.n
-                ret(:,i) = FK(obj.n).pos - FK(i-1).pos;                     % ith joint is aligned with link i-1
+                ret(:,i) = FK(obj.n).pos - FK(i-1).pos;    	% ith joint is aligned with link i-1
             end
         end
         
@@ -230,13 +230,29 @@ classdef SerialLink < handle
             if nargin == 1                                                  % No inputs, use current state
                 FK = obj.fkchain;
             end
-            ret(:,1) = obj.base.transform(obj.link(1).com);
+            
+            % These forward declaration make calcs a little faster
+            c = cos(obj.q(1));
+            s = sin(obj.q(1));
+            
+            % Centre of mass = p + R*R(q)*c, where:
+            % p is the position of the previous link transform,
+            % R is the rotation of the previous link transform,
+            % R(q) is the offset from the joint rotation,
+            % c is the local position for the centre of mass
+            ret(:,1) = obj.base.pos + obj.base.rot.matrix*...
+                       [obj.link(1).com(1)*c - obj.link(1).com(2)*s
+                        obj.link(1).com(1)*s + obj.link(1).com(2)*c
+                        obj.link(1).com(3)];
+                    
             for i = 2:obj.n
-                ret(:,i) = FK(i-1).transform(obj.link(i).com);
-            end
-%             for i = 1:obj.n
-%                 ret(:,i) = FK(i).pos + FK(i).rot.rotate(obj.link(i).com);
-%             end
+                c = cos(obj.q(i));
+                s = sin(obj.q(i));
+                ret(:,i) = FK(i-1).pos + FK(i-1).rot.matrix*...
+                           [obj.link(i).com(1)*c - obj.link(i).com(2)*s
+                            obj.link(i).com(1)*s + obj.link(i).com(2)*c
+                            obj.link(i).com(3)];
+            end              
         end
         
       	% Compute Jacobian for the centre of mass for every link
@@ -319,25 +335,39 @@ classdef SerialLink < handle
         
         % Get the inertia matrices for each link in the origin frame
         function [I,Idot] = getLinkInertia(obj,q)
-            I = zeros(3,3,obj.n);                                           % Pre-allocate memory
-            Idot = zeros(3,3,obj.n);                                        % Pre-allocate memory
-            if nargin == 1                                                  % Use current state
-                FK = obj.fkchain;
+            I = zeros(3,3,obj.n);                           % Pre-allocate memory
+            Idot = zeros(3,3,obj.n);                        % Pre-allocate memory
+            if nargin == 1                                  % Use current state
+                FK = obj.fkchain;                           
                 w = obj.omega;
-            else
+                q = obj.q;
+            else                                            % Compute for given joint state
                 [~,FK] = obj.fk(q);
                 w = zeros(3,obj.n);
             end
-            I(:,:,1) = obj.base.rot.rotate(obj.link(1).inertia);
-            Idot(:,:,1) = skew(w(:,1))*I(:,:,1);
+            
+            % This makes things a little faster
+            c = cos(q(1));
+            s = sin(q(1));
+            
+            % Orientation of link from base and joint rotation
+            R = obj.base.rot.matrix*[c, -s, 0
+                              s,  c, 0
+                              0,  0, 1];
+                          
+            I(:,:,1) = R*obj.link(1).inertia*R';        % Rotate inertia for first link
+            
             for j = 2:obj.n
-                I(:,:,j) = FK(j-1).rot.rotate(obj.link(j).inertia);
-                Idot(:,:,j) = skew(w(:,j))*I(:,:,j);
+                c = cos(q(j));
+                s = sin(q(j));
+                
+                R = FK(j-1).rot.matrix*[c, -s, 0
+                                        s,  c, 0
+                                        0,  0, 1];
+                                    
+                I(:,:,j) = R*obj.link(j).inertia*R';           % Rotate the inertia matrix to the origin frame
+                Idot(:,:,j) = skew(w(:,j))*I(:,:,j);           % Compute the time-derivative
             end
-%             for j = 1:obj.n
-%                 I(:,:,j) = FK(j).rot.rotate(obj.link(j).inertia);           % Rotate the inertia matrix to the origin frame
-%                 Idot(:,:,j) = skew(w(:,j))*I(:,:,j);                        % Compute the time-derivative
-%             end
         end  
     end
 end
