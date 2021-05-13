@@ -43,15 +43,19 @@
 
 function ret = getAcc(obj,tau,disturbance)
  
-        if nargin < 3
-            disturbance = zeros(obj.n,1);
-        end
-        
-        qdot = obj.qdot;
-        M = obj.M;
-        C = obj.C;
-        g = obj.grav;
-
+	if nargin < 3
+        disturbance = zeros(obj.n,1);
+    end
     
-	ret = M\(tau - (C+obj.D)*qdot - g - disturbance);
+    % Inertia matrix can be ill-conditioned, so need to add damping to the
+    % inverse.
+    d = det(obj.M);
+    if d < 1E-5
+        damping = (1-(d/1E-5)^2)*6E-4;          % This value seems to work well
+        invM = obj.M/(obj.M*obj.M + damping*eye(obj.n));
+    else
+        invM = inv(obj.M);
+    end
+    
+    ret = invM*(tau - (obj.C + obj.D)*obj.qdot - obj.grav - disturbance);
 end
