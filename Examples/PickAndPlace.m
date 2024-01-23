@@ -1,4 +1,4 @@
-%% Pick-and-Place Task
+%% Trajectory Comparison
 % Jon Woolfrey
 %
 % This script demonstrates a "pick-and-place" task for a robot arm. Given
@@ -95,7 +95,7 @@ tic
 for i = 1:steps
     
     % Update robot state
-    q = q + dt*qdot + 0.5*dt*dt*qddot;          
+    q = q + dt*qdot;          
     qdot = qdot + dt*qddot;
     robot.updateState(q,qdot);
     

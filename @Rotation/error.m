@@ -40,17 +40,11 @@
 
 function ret = error(obj,desired)
     
-    %Compute the angle between the quaternions
-    % N.B: Normally you'd divide by the norm of the vectors, but quaternions
-    %      are unit norm so it's not required here
-    angle = acos(obj.quat'*desired.quat);    
-
-    % If the angle is greater than 90 degrees, change the sign
-    if angle > pi/2
-        desired.quat = -1*desired.quat;
-    end
-    
     ret = obj.quat(1)*desired.quat(2:4)                 ...
           - desired.quat(1)*obj.quat(2:4)               ...
           - cross(desired.quat(2:4),obj.quat(2:4));
+      
+    angle = acos(dot(obj.quat,desired.quat));
+    
+    if(angle >= 3.141592) ret = -ret;
 end

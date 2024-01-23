@@ -13,8 +13,6 @@
 % the manipulator is taken into account when computing the gravitational
 % torque.
 
-
-
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
 % This file is part of the Robot Toolbox I developed for MATLAB.

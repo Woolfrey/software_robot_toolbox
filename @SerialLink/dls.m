@@ -51,17 +51,24 @@ function ret = dls(obj,J,W,option)
         end
     end
     
-    obj.manipulability = sqrt(det(J*J'));
+    mu = sqrt(det(J*J'));
     
-    if obj.manipulability < obj.threshold
-        obj.damping = (1 - (obj.manipulability/obj.threshold)^2)*obj.maxDamping;
+    if mu < obj.threshold
+        damping = (1 - (mu/obj.threshold)^2)*obj.maxDamping^2;
         if verbose
             warning("The manipulator is near singular!");
         end
     else
-        obj.damping = 0;
+        damping = 0;
     end
-    invWJt = W\J';      % Hopefully this makes calcs a little faster
-    ret = invWJt/(J*invWJt + obj.damping*eye(6));
+    
+    % N.B. inertia matrix can be poorly conditioned so need to damp it if
+    % using it as the weighting matrix
+    if det(W) < 1E-5
+        invWJt = W'/(W*W' + 1E-4*eye(obj.n))*J';
+    else
+        invWJt = W\J';
+    end
+    ret = invWJt/(J*invWJt + damping*eye(6));
 
 end

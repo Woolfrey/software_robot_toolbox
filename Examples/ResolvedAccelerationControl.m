@@ -35,7 +35,7 @@ load sawyer.mat;                                                            % Lo
 %% General Simulation Parameters
 animate = 1;                            % 1 = Animate                                                          
 dt = 1/100;                             % Discrete time-step, inverse of frequency
-Kp = 1000;                              % Proportional gain
+Kp = 500;                               % Proportional gain
 Kd = ceil(2*sqrt(Kp));                  % Derivative gain
 steps = 15/dt;                          % Total no. of steps to run simulation
 workspace = [-0.2 0.8 -0.5 0.5 0 1];    % Used when animating
@@ -44,12 +44,12 @@ workspace = [-0.2 0.8 -0.5 0.5 0 1];    % Used when animating
 p1 = [0.6;-0.3; 0.7];                   % First position
 p2 = [0.6; 0.3; 0.7];                  	% Second position
 R1 = Rotation('rpy',[0; pi/2; 0]);    	% First orientation
-R2 = Rotation('rpy',[0; pi/2; 0]);    	% Second orientation
+R2 = Rotation('rpy',[0; 3*pi/4; 0]);    	% Second orientation
 T1 = Pose(p1,R1);                     	% Create a pose object for the first
 T2 = Pose(p2,R2);
 %% Generate Trajectory Objects
 t0 = 1;                                                                     % Start time
-tf = 5;                                                                    % End time
+tf = 10;                                                                    % End time
 trajectory = Cartesian([T1,T2],[t0,tf],'quintic');
 
 %% Solve Inverse Kinematics for Initial Pose
@@ -72,7 +72,7 @@ m = nan(steps,1);                                         	% Manipulability
 tic;                                                    	% Start timer                                                           
 for i = 1:steps
     % Update the current system state
-    q = q + dt*qdot + 0.5*dt*dt*qddot;                     	% Update joint positions
+    q = q + dt*qdot;                     	                % Update joint positions
     qdot = qdot + dt*qddot;                             	% Update joint velocities
     robot.updateState(q,qdot);                            	% Update the robot state    
     t = (i-1)*dt;                                          	% Current simulation time
@@ -81,7 +81,7 @@ for i = 1:steps
     [pos,vel,acc] = trajectory.getState(t);
     
     % Compute joint control
-    qddr = zeros(robot.n,1);                                % No redundant accelerations
+    qddr = -robot.D*qdot;                                   % No redundant accelerations
     tau = robot.rac(acc, vel, Kd, pos, Kp, qddr);           % Compute joint accelerations
     qddot = robot.getAcc(tau);                              % This is only needed for simulation
     

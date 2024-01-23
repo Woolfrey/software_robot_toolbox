@@ -55,13 +55,14 @@ classdef SerialLink < handle
         qdot;                       % Joint velocities
         threshold = 0.1;            % Threshold value for activating Damped Least Squares
         tool = Pose();              % Tool transform
+        com;                        % Centre of mass for each link
+        a;                          % Axis of rotation for each joint
+        fkchain;                	% Forward kinematic chain
+
     end
      
     properties (Access = private)
-        a;                          % Axis of rotation for each joint
         adot;                     	% Time-derivative
-        com;                        % Centre of mass for each link
-        fkchain;                	% Forward kinematic chain
         H;                        	% Inertia for each link
         Hdot;                    	% Time-derivative of inertia for each link
         Jm;                         % Jacobian to c.o.m. for each link
@@ -117,7 +118,7 @@ classdef SerialLink < handle
             obj.adot = obj.getAxisDot();              	% Relies on omega, a
             obj.rdot = obj.getDistDot();            	% Relies on omega, r, qdot, a
             
-            % Update Dynamics
+%            Update Dynamics
             obj.com = obj.getCOM();                   	% Relies on FK
             [obj.H, obj.Hdot] = obj.getLinkInertia(); 	% Relies on FK, omega
             obj.Jm = obj.getMassJacobian();            	% Relies on FK, c.o.m.

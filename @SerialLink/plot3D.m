@@ -6,14 +6,12 @@
 % TO DO:
 %   - Merge this method with SerialLink.plot
 
-
-
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
 % This file is part of the Robot Toolbox I developed for MATLAB.
 %
 % My Robot Toolbox is free software and may be distributed and/or modified
-% according to the terms of the GNU General Public Licence v3.0
+% according to the termclcs of the GNU General Public Licence v3.0
 % (https://www.gnu.org/licenses/gpl-3.0.en.html). A copy should be included
 % in the root directory.
 %
@@ -32,7 +30,7 @@ function plot3D(obj,q,varargin)
 
     for i = 1:obj.n
         if isempty(obj.link(i).faces)
-            error("Insufficient data to create a 3D model of this robot.");
+           % error("Insufficient data to create a 3D model of this robot.");
             break
         end
     end
@@ -46,8 +44,8 @@ function plot3D(obj,q,varargin)
     % Default options
     axes = false;
 	workspace = [-0.2 1.0 -0.6 0.6 -0.1 1.1];                                      
-    perspective = [-30 30];
-    toolFrame = true;
+    perspective = [50 30];
+%     toolFrame = true;
     
     % Process optional inputs
     for i = 1:length(varargin)
@@ -60,8 +58,8 @@ function plot3D(obj,q,varargin)
                     workspace = varargin{i+1};
                 case 'view'
                     perspective = varargin{i+1};
-                case 'noToolFrame'
-                    toolFrame = false;
+%                 case 'noToolFrame'
+%                     toolFrame = false;
                 otherwise
                     error("Option(s) for SerialLink.plot3D() incorrectly specified.");
             end
@@ -93,7 +91,7 @@ function plot3D(obj,q,varargin)
     % base and each link
     if ~modelExists
         hg = hggroup('Tag',obj.name);
-
+        
         % Plot the base
         base_patch = patch('Faces', obj.basefaces,    	...
                      'Vertices', obj.basevertices,    	...

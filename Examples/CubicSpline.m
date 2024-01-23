@@ -3,8 +3,6 @@
 %
 % This script tests the generation of cubic spline trajectories.
 
-
-
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
 % This file is part of the Robot Toolbox I developed for MATLAB.
@@ -29,8 +27,8 @@ close all
 clear all
 clc
 %% Parameters
-m = 2;                                          % Dimensions (use 3 to plot the results)
-n = 25;                                     	% Go crazy, try 100!
+m = 3;                                          % Dimensions (use 3 to plot the results)
+n = 10;                                          % Go crazy, try 100!
 points = rand(m,n);                             % Randomly generate a series of points
 times = 1:n;                                    % Time to reach each point                 
          
@@ -50,27 +48,37 @@ end
 toc/steps                                       % Average computation time
 
 %% Plot Results
-figure(1)
-t = (0:steps-1)*dt;
-subplot(3,1,1)
-plot(t,pos)
-hold on
-for i = 1:m
-    scatter(times,points(i,:),'filled')
-end
-hold off
-subplot(3,1,2)
-plot(t,vel)
-subplot(3,1,3)
-plot(t,acc)
+t = (0:steps-1)*dt;                         % Time array
 
-if m == 3
+figure(1)
+subplot(3,1,1)
+    plot(t,pos,'LineWidth',1)               % Plot trajectories
+    hold on
+        for i = 1:m
+            scatter(times,points(i,:),'filled') % Overlay waypoints
+        end
+    hold off
+    box off
+    ylabel('Position')
+subplot(3,1,2)
+    plot(t,vel,'LineWidth',1)               % Plot velocities
+    box off
+    ylabel('Velocity')
+subplot(3,1,3)
+    plot(t,acc,'LineWidth',1)               % Plot accelerations
+    box off
+    ylabel('Acceleration')
+    xlabel('Time (s)')
+set(gcf,'Color',[1 1 1])
+
+if m == 3                                   % 3D data
     figure(2)
-    plot3(pos(1,:),pos(2,:),pos(3,:),'k','LineWidth',1)
+    plot3(pos(1,:),pos(2,:),pos(3,:),'k','LineWidth',1) % Plot trajectory
     hold on
     scatter3(points(1,:),points(2,:),points(3,:),'k','filled')
     hold off
     grid on
     box off
     axis equal
+    set(gcf,'Color',[1 1 1])
 end

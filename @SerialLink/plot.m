@@ -40,7 +40,7 @@ function plot(obj,q,varargin)
 
     % Default options
     axes = false;
-	workspace = [-1 1 -1 1 -0.5 1.5];      
+	workspace = [-0.5 0.5 -0.5 0.5 -0.5 0.5];      
     
     % Process options
     for i = 1:length(varargin)
@@ -84,7 +84,7 @@ function plot(obj,q,varargin)
         else
             N = 4;                                                          % 4 faces for a rectangular prism
         end
-        [x,y,z] = cylinder([0,0.07,0.07,0],N);                             	% Generate surface data
+        [x,y,z] = cylinder([0,0.02,0.02,0],N);                             	% Generate surface data
         z([1,2],:) = -0.055;                                                % Origin
         z([3,4],:) = 0.055;                                               	% End
         hold on
@@ -97,7 +97,7 @@ function plot(obj,q,varargin)
         else
             N = 4;                                                        	% 4 faces for a rectangular prism
         end
-        [x,y,z] = cylinder([0,0.05,0.05,0],N);                             	% Generate surface data
+        [x,y,z] = cylinder([0,0.01,0.01,0],N);                             	% Generate surface data
         z([1,2],:) = 0;                                                   	% Origin
         if obj.link(i).isrevolute                                        	% Revolute joint
             z([3,4],:) = p(3);
@@ -109,12 +109,13 @@ function plot(obj,q,varargin)
         hold off
         
         % Create a cylinder for the link in the x-direction
-        [x,y,z] = cylinder([0,0.05,0.05,0],30);                             % Generate surface
+        [x,y,z] = cylinder([0,0.02,0.02,0],30);                             % Generate surface
         z([1,2],:) = 0;                                                     % Origin
         z([3,4],:) = obj.link(i).a;                                         % Translation in x-direction                                            
         hold on
             h(3,i) = surfl(x,y,z);
-        hold off
+            alpha = 0.2;
+            hold off
         
         % Set the properties for display
         for j = 1:3

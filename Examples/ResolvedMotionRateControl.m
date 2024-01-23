@@ -33,24 +33,24 @@ clc
 load sawyer.mat;                                                            % Load the Sawyer model
 
 %% General Simulation Parameters
-animate = 0;                        % Turn animation on or off                                                             
-dt = 1/100;                         % Discrete time step, for simulation purposes
-Kp = 80;                            % Proportional gain
-Kd = ceil(2*sqrt(Kp));          	% Derivative gain
-steps = 10/dt;                      % No. of steps to run the simulation
+animate = 1;                                        % Turn animation on or off                                                             
+dt = 1/100;                                         % Discrete time step, for simulation purposes
+Kp = 50;                                            % Proportional gain
+Kd = ceil(2*sqrt(Kp));                              % Derivative gain
+steps = 10/dt;                                      % No. of steps to run the simulation
 workspace = [-0.2 0.8 -0.5 0.5 0 1];
 
 %% Generate Initial and Final Pose
-p1 = [0.6;-0.3; 0.7];                                                       % First position
-p2 = [0.6; 0.3; 0.7];                                                     	% Second position
-R1 = Rotation('rpy',[0; pi/2; 0]);                                          % First orientation
-R2 = Rotation('rpy',[0; pi/2; 0]);                                          % Second orientation
-T1 = Pose(p1,R1);                                                           % Create a pose object for the first
+p1 = [0.6;-0.3; 0.7];                             	% First position
+p2 = [0.6; 0.3; 0.7];                             	% Second position
+R1 = Rotation('rpy',[0; pi/2; 0]);                 	% First orientation
+R2 = Rotation('rpy',[0; pi/2; 0]);                	% Second orientation
+T1 = Pose(p1,R1);                                  	% Create a pose object for the first
 T2 = Pose(p2,R2);
 %% Generate Trajectory Objects
 t0 = 1;             % Start time                                                                % Start time
 tf = 10;            % End time
-trajectory = Cartesian([T1, T2], [t0, tf], 'trapezoidal');
+trajectory = Cartesian([T1, T2], [t0, tf], 'quintic');
 
 %% Solve Inverse Kinematics for Initial Pose
 % q0 = [-0.3132   -0.4681    1.0829   -1.1893   -0.2388    1.6943    0.5948]';
@@ -72,7 +72,7 @@ m = nan(steps,1);                                                           % Ma
 tic;                                                                        % Start timer                                                           
 for i = 1:steps
     % Update the current system state
-    q = q + dt*qdot + 0.5*dt*dt*qddot;                                      % Update joint positions
+    q = q + dt*qdot;                                      % Update joint positions
     qdot = qdot + dt*qddot;                                                 % Update joint velocities
     robot.updateState(q,qdot);                                              % Update the robot state    
     t = (i-1)*dt;                                                           % Current simulation time
@@ -96,7 +96,8 @@ for i = 1:steps
     trackingError(1,i) = norm(pos.pos - robot.tool.pos)*1000;               % Position error
     Re = pos.rot*robot.tool.rot.inverse;    
     trackingError(2,i) = rad2deg(Re.angle);                                 % Orientation error
-    m(i) = robot.manipulability;                                                % Manipulability
+    J = robot.getJacobian();
+    m(i) = sqrt(det(J*J'));                                             % Manipulability
   
 end
 temp = steps/toc;                                                           % Stop timer and convert to frequency

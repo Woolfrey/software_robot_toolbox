@@ -11,7 +11,7 @@
 % - baseTF (Pose object):   Optional base transformation (default uses current base pose)
 %
 % Output:
-% - dJ/dq_j (6x7):          Exact numerical solution for the partial derivative of the Jacobian
+% - dJ/dq_j (6xn):          Exact numerical solution for the partial derivative of the Jacobian
 %
 % Verify the result with the following: Jdot = sum((dJ/dq_j)*qdot_j)
 
@@ -36,7 +36,7 @@
 % jonathan.woolfrey@gmail.com
 
 function ret = getPartialJacobian(obj,j,q,baseTF)
-    ret = zeros(6,7);                   % Pre-allocate memory
+    ret = zeros(6,obj.n);               % Pre-allocate memory
 
     if nargin == 2                    	% Use current state
         v = obj.a;                     	% Axis of actuation for each joint

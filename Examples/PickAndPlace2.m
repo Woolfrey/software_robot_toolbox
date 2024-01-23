@@ -31,14 +31,14 @@ clc
 
 load kukaiiwa7.mat;                     % Robot model                                            % Load the Sawyer model
 load itemBox.mat;                       % Payload model
-robot.payload = itemBox;                % Assign itembox to SerialLink           
+robot.payload = itemBox;                % Assign itembox to SerialLink
 robot.payload.exists = true;            % Turn on dynamic calcs
 %% General Simulation Parameters
 animate = 1;                            % 1 = Animate                                                          
 dt = 1/100;                             % Discrete time-step, inverse of frequency
 Kp = 1000;                              % Proportional gain
 Kd = ceil(2*sqrt(Kp));                  % Derivative gain
-steps = 15/dt;                          % Total no. of steps to run simulation
+steps = 13/dt;                          % Total no. of steps to run simulation
 workspace = [-0.2 0.8 -0.5 0.5 0 1];    % Used when animating
 
 %% Generate Poses and Trajectory
@@ -47,10 +47,21 @@ P2 = Pose([0.4; 0.25; 0.6], Rotation('rpy',[0,0,0]));       % Second
 P3 = Pose([0.4;-0.25; 0.6], Rotation('rpy',[-pi,0,0]));     % Third
 P4 = Pose([0.4;-0.25; 0.2], Rotation('rpy',[-pi,0,0]));     % Fourth
 trajectory = Cartesian([P1,P2,P3,P4],[0,4,8,12],'cspline');
+
+% This is just used for visualization
+delta = 12/100;
+spline = nan(3,100);
+waypoints = [P1.pos, P2.pos, P3.pos, P4.pos];
+for i = 1:100
+    t = (i-1)*delta;
+    P = trajectory.getState(t);
+    spline(:,i) = P.pos;
+end
+
 %% Solve Inverse Kinematics for Initial Pose
-% q0 = robot.ik(P1,0.2*randn(7,1),'method','inverse');    	% Solve the inverse kinematics
+q0 = robot.ik(P1,0.2*randn(7,1),'method','inverse');    	% Solve the inverse kinematics
 % robot.plot(q0,'workspace',workspace);                    	% Plot the robot model to check the solution
-q0 = [-0.0140    0.8132   -2.4062   -1.8796    2.3598    0.7640   -1.9775]';
+% q0 = [-0.0140    0.8132   -2.4062   -1.8796    2.3598    0.7640   -1.9775]';
 disp('Proceed? (Press any key)')
 pause;
 
@@ -66,7 +77,8 @@ trackingError = nan(2,steps); 	% For plotting
 tic;                                                       	% Start timer                                                           
 for i = 1:steps
     % Update the current system state
-    q = q + dt*qdot + 0.5*dt*dt*qddot;                    	% Update joint positions
+    q = q + dt*qdot;                                    
+    % Update joint positions
     qdot = qdot + dt*qddot;                                	% Update joint velocities
     robot.updateState(q,qdot);                             	% Update the robot state    
     t = (i-1)*dt;                                         	% Current simulation time
@@ -75,13 +87,18 @@ for i = 1:steps
     [pos,vel,acc] = trajectory.getState(t);
     
     % Compute joint control
-    qddr = -robot.D*qdot;                                   % Redundant task
+    qddr = -robot.M\((robot.C +robot.D)*qdot); % Redundant task
     tau = robot.rac(acc, vel, Kd, pos, Kp, qddr);           % Compute joint torques
     qddot = robot.getAcc(tau);                              % This is only needed for simulation
     
-    if animate && mod(i,25) == 0
+    if animate && mod(i,10) == 0
         robot.plot3D(robot.q,'workspace',workspace,'view',[80 30]);        % Generate a plot of the robot
         itemBox.plot();
+        hold on
+        plot3(spline(1,:),spline(2,:),spline(3,:),'r')
+        scatter3(waypoints(1,:),waypoints(2,:),waypoints(3,:),'r','filled')
+        hold off
+%         saveas(gcf,['Frame',num2str(i),'.jpeg'])
     end
     
     % Save data for plotting

@@ -51,7 +51,7 @@ function ret = rac(obj, acc, vel, Kd, pos, Kp, redundant)
         xddot = acc + Kp*e + Kd*edot;                           % End-effector acceleration
     end
         if obj.n > 6                                            % Kinematically redundant
-        invJ = obj.dls(J,obj.M,"verbose");                  	% Use inertia weighting
+            invJ = obj.dls(J,obj.M,"verbose");                  	% Use inertia weighting
         if nargin < 5                               
             qddot = invJ*(xddot - Jdot*obj.qdot);               % No null space control
         else

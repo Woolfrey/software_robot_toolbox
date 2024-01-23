@@ -33,9 +33,10 @@ function ret = maxManipulability(obj,alpha)
     g = zeros(obj.n,1);                 % Memory allocation for gradient vector
     J = obj.getJacobian();              % Jacobian matrix
     invJ = obj.dls(J);                  % Pseudo-inverse Jacobian
+    manipulability = sqrt(det(J*J'));
     for i = 2:obj.n
         dJdq = obj.getPartialJacobian(i);
-        g(i) = obj.manipulability*trace(dJdq*invJ); % Gradient of manipulability
+        g(i) = manipulability*trace(dJdq*invJ); % Gradient of manipulability
     end
     ret = alpha*g;
 end

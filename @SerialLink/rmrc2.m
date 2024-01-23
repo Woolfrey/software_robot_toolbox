@@ -11,7 +11,7 @@
 % - redundant (nx1)     Joint velocities relating to a redundant task
 %
 % Output:
-% - Joint torques (nx1)
+% - Joint velocities (nx1)
 
 % Copyright (C) Jon Woolfrey, 2019-2020
 % 
@@ -33,7 +33,7 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = rmrc(obj,vel,pose,Kp,redundant)
+function ret = rmrc2(obj,vel,pose,Kp,redundant)
     
     if nargin == 2
         xdot = vel;
@@ -43,8 +43,9 @@ function ret = rmrc(obj,vel,pose,Kp,redundant)
     end
     
     J = obj.getJacobian();                                	% Compute Jacobian at current pose
+   
     if obj.n > 6
-        W = obj.M + obj.getJointWeight(obj.q); 	            % Weighted solution
+        W = obj.M + obj.getJointWeight(obj.q,obj.qdot); 	% Weighted solution
         invJ = obj.dls(J,W);                                % Weighted pseuodinverse
         if nargin < 5                                       % No redundant task specified
             qdot = invJ*xdot;

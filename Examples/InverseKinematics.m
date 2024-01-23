@@ -32,16 +32,15 @@ clc
 load ur3.mat;
 %% 
 
-p = [0.25;-0.1;0.3];                     % Desired end-effector positions
-R = Rotation('rpy',[pi/2, 0, pi/2]);    % Desired end-effector orientation
+p = [0.4;0;0.35];                     % Desired end-effector positions
+R = Rotation('rpy',[0, pi/2, 0]);    % Desired end-effector orientation
 P = Pose(p,R);                          % Combine as a Pose object
 
 
 % % This configuration passes through itself
 % q0 = [0.2889    0.9841   -0.0704   -0.6040    0.3686   -0.1712]';
-
-q0 = randn(6,1);                        % Initial guess for IK solver
-
+% q0 = randn(6,1);                        % Initial guess for IK solver
+q0 = [-0.3609   -0.3407   -0.9054    1.2461    1.2099   -1.5708]' + randn(1,6)*0.5;
 q = robot.ik(P,q0,'method','transpose'); % Method is either 'transpose' or 'inverse'
 
 robot.plot3D(q,'workspace',[-0.2 0.8 -0.5 0.5 0 1]) % Plot the end result

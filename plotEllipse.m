@@ -70,6 +70,11 @@ function plotEllipse(A, varargin)
         case 2
             points = linspace(0,2*pi,50);                   % Points around a unit circle
             unitCircle = [cos(points); sin(points)];        % Create array of x,y coordinates
+            if det(A) < 1E-5
+                [U, S, V] = svd(A);
+                S(2,2) = 1E-10;
+                A = U*S*V';
+            end
             tf = sqrtm(inv(A));                             % Transform matrix
             ellipse = tf*unitCircle + Centre;               % Transform array, add offset
             plot(ellipse(1,:),ellipse(2,:),'Color',LineColor,'LineWidth',LineWidth);           

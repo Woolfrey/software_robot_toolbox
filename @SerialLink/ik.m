@@ -84,28 +84,24 @@ function ret = ik(obj,desired,q0,varargin)
     dq = zeros(obj.n);                                                      % Step size in joint space
     
     while count < steps
-        EE = obj.fk(q,origin);                                              % Compute tool pose at current state
-        temp = EE.error(desired);                                           % Compute pose error at this configuration
-        if count > 1
-            de = temp - e;                                                  % Change in error since previous step
-        end     
-        
-        e = temp;                                                           % Update error
-                      
+        pose = obj.fk(q,origin);                                              % Compute tool pose at current state
+        poseError = pose.error(desired);                                           % Compute pose error at this configuration
+  
         J = obj.getJacobian(q);                                             % Compute Jacobian for current configuration
         
         switch method
             case 'inverse'
-                if obj.n > 6
-                    W = obj.getInertia(q);                                  % Use inertia weighting
-                else
-                    W = eye(obj.n);
+                [U,S,V] = svd(J);
+                invS = zeros(obj.n,6);
+                for(i = 1:6)
+                    if(S(i,i) > 1e-4)
+                        invS(i,i) = 1/S(i,i);
+                    end
                 end
-                dq = obj.dls(J,W)*(e - 0.75*de);                            % Use pseudoinverse Jacobian
-                
+              
+                dq = V*invS*U'*0.5*poseError;
             case 'transpose'
-                dq = J'*(e-0.4*de);                                         % Use transpose
-                
+                dq = 0.9*J'*poseError;
             otherwise
                 disp("Method incorrectly specified. Please input 'transpose' or 'inverse'.");
         end

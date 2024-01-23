@@ -51,7 +51,7 @@ classdef Trajectory
                 pos = (sin(x)*p1 + sin(y)*p2)/denom;                       	% Give the position            
                 dpds = (-cos(x)*p1 + cos(y)*p2)*(theta/denom);              % Partial derivative of interpolation function w.r.t. s
                 qdot = dpds*sd;                                           	% Quaternion velocity?
-                qddot = -pos*theta^2*sd + dpds*sdd;                         % Quaternion acceleration?
+                qddot = -pos*(theta*sd)^2 + dpds*sdd;                         % Quaternion acceleration?
                 A = 2*[-pos(2:4), pos(1)*eye(3) + skew(pos(2:4))];        	% Matrix mapping to angular velocity
                 Adot = 2*[-qdot(2:4), qdot(1)*eye(3) + skew(qdot(2:4))];   	% Time derivative
                 vel = A*qdot;                                             	% Angular velocity

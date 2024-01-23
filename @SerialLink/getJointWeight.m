@@ -28,16 +28,19 @@
 %
 % jonathan.woolfrey@gmail.com
 
-function ret = getJointWeight(obj,q,qdot)
+function ret = getJointWeight(obj,q)
     
-    ret = eye(obj.n);                         % Joint weighting matrix to return
+    ret = eye(obj.n);                                           % Joint weighting matrix to return
     for i = 1:obj.n
-        u = obj.link(i).qlim(2) - q(i);       % Proximity to upper limit
-        v = q(i) - obj.link(i).qlim(1);       % Proximity to lower limit
-        dp = -u^-2 - v^-2;                    % Partial-derivative
-        pdot = dp*qdot(i);                    % Time-derivative
-        if pdot > 0
-            ret(i,i) = 1/u + 1/v - 4/(obj.link(i).qlim(2) - obj.link(i).qlim(1)) + 1;
+        u = obj.link(i).qlim(2);
+        l = obj.link(i).qlim(1);
+        upper = u - q(i);                                       % Distance to upper limit
+        lower = q(i) - l;                                       % Distance from lower limit
+        range = u - l;
+        dpdq = range^2*(2*q(i) - u - l)/(4*upper^2*lower^2);    % Partial derivative
+        
+        if(dpdq*obj.qdot(i) > 0)                                % Moving toward a limit
+            ret(i,i) = range^2/(4*upper*lower);                 % Penalize joint motion
         end
     end
 end
